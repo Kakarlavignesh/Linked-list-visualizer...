@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Brave Node's Adventure | LLMaster</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo"><a href="index.html" style="text-decoration: none; color: inherit;"><i
+                        class="fas fa-link"></i> LLMaster</a></div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="linkedlist.html" class="active">Story</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container story-viewer">
+        <div class="story-header">
+            <h1 class="text-gradient">A sweet story of a thief</h1>
+        </div>
+
+        <div id="story-container" class="story-pane">
+            <!-- Story slides injected here -->
+            <div id="story-slide" class="slide animate-fade">
+                <div class="slide-visual">
+                    <i class="fas fa-user-ninja node-avatar"></i>
+                </div>
+                <div class="slide-text">
+                    <h2>Meet the "Node"</h2>
+                    <p>In a small village called Memory, lived a tiny villager named Node. Node was unique—he always
+                        carried a secret address in his pocket.</p>
+                </div>
+            </div>
+
+            <div class="story-nav">
+                <button onclick="prevSlide()" class="btn btn-outline" id="prev-btn">Previous</button>
+                <div id="slide-indicators"></div>
+                <button onclick="nextSlide()" class="btn btn-filled" id="next-btn">Next Scene</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const slides = [
+            {
+                visual: '<i class="fas fa-user-ninja node-avatar"></i>',
+                title: 'Meet the "Node"',
+                text: 'In a small village called Memory, lived a tiny villager named Node. Node was unique—he always carried a secret address in his pocket.'
+            },
+            {
+                visual: '<div class="node-pair"><i class="fas fa-user-ninja node-avatar"></i> <i class="fas fa-arrow-right"></i> <i class="fas fa-map-marker-alt address-icon"></i></div>',
+                title: 'The Secret Tracker',
+                text: 'The address in his pocket wasn\'t his own; it was the address of his best friend who lived nearby. This is what we call a "Pointer".'
+            },
+            {
+                visual: '<div class="node-chain"><i class="fas fa-link"></i><i class="fas fa-link"></i><i class="fas fa-link"></i></div>',
+                title: 'The Great Chain',
+                text: 'One day, a thief tried to steal their treasures. To stay together, the villagers held each other\'s addresses in a long chain. If you know the first person (the Head), you can find everyone!'
+            },
+            {
+                visual: '<i class="fas fa-door-closed exit-icon"></i>',
+                title: 'The Final Secret',
+                text: 'But who does the last person point to? They point to a magical place called NULL—the void where nobody lives. That\'s how the chain ends!'
+            }
+        ];
+
+        let currentSlide = 0;
+
+        function updateSlide() {
+            const slide = slides[currentSlide];
+            const container = document.getElementById('story-slide');
+            container.innerHTML = `
+                <div class="slide-visual">${slide.visual}</div>
+                <div class="slide-text">
+                    <h2>${slide.title}</h2>
+                    <p>${slide.text}</p>
+                </div>
+            `;
+
+            document.getElementById('prev-btn').style.visibility = currentSlide === 0 ? 'hidden' : 'visible';
+            document.getElementById('next-btn').innerText = currentSlide === slides.length - 1 ? 'Start the Box Game' : 'Next Scene';
+
+            // Re-trigger animation
+            container.classList.remove('animate-fade');
+            void container.offsetWidth;
+            container.classList.add('animate-fade');
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateSlide();
+            } else {
+                window.location.href = 'boxes.html';
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        updateSlide();
+    </script>
+
+    <style>
+        .story-viewer {
+            padding: 4rem 0;
+            max-width: 800px;
+        }
+
+        .story-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .story-header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .story-pane {
+            background: var(--surface);
+            padding: 4rem;
+            border-radius: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .slide {
+            text-align: center;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide-visual {
+            font-size: 8rem;
+            margin-bottom: 3rem;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .node-avatar {
+            color: var(--primary);
+        }
+
+        .address-icon {
+            color: var(--secondary);
+        }
+
+        .node-pair,
+        .node-chain {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            color: var(--primary-light);
+        }
+
+        .slide-text h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .slide-text p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+
+        .story-nav {
+            margin-top: 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade {
+            animation: fadeSlide 0.6s ease-out forwards;
+        }
+    </style>
+</body>
+
+</html>

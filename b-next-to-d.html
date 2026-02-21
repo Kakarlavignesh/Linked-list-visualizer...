@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge: Pointer Manipulation | LLMaster</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo"><a href="index.html" style="text-decoration: none; color: inherit;"><i
+                        class="fas fa-link"></i> LLMaster</a></div>
+            <ul class="nav-links">
+                <li><a href="index.html">Back to Home</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container page-content">
+        <section class="challenge-hero">
+            <div class="challenge-info">
+                <span class="badge">CHALLENGE #2</span>
+                <h1>Pointer Manipulation</h1>
+                <p><strong>Scenario:</strong> You want to skip node <code>C</code>. <code>B</code>'s next should point
+                    directly to <code>D</code>, and <code>C</code>'s next should become <code>null</code>.</p>
+            </div>
+        </section>
+
+        <section class="challenge-ui">
+            <div class="editor-side">
+                <div class="editor-toolbar">
+                    <span><i class="fas fa-code"></i> Solution Editor</span>
+                    <button onclick="checkSolution()" class="btn btn-filled small">Submit & Test</button>
+                </div>
+                <textarea id="challenge-editor" class="fira-code" spellcheck="false">
+Node node1 = new Node("A");
+Node node2 = new Node("B");
+Node node3 = new Node("C");
+Node node4 = new Node("D");
+
+node1.next = node2;
+node2.next = node3;
+node3.next = node4;
+
+// Your task: Skip C. 
+// node2 (B) should point to node4 (D).
+// node3 (C) should point to null.
+                </textarea>
+                <div id="feedback" class="feedback-msg"></div>
+            </div>
+
+            <div class="viz-side">
+                <h3>Visual Live Result</h3>
+                <div id="challenge-viz" class="visualizer-container shadow-glow"></div>
+                <div class="hint">
+                    <i class="fas fa-lightbulb"></i> Hint: node2.next = node4; node3.next = null;
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/visualizer.js"></script>
+    <script>
+        // Mock Node class for the interpreter
+        class MockNode {
+            constructor(val) {
+                this.value = val;
+                this.next = null;
+                this.prev = null;
+            }
+        }
+
+        const viz = new Visualizer('challenge-viz', 'singly');
+
+        function checkSolution() {
+            const code = document.getElementById('challenge-editor').value;
+            const feedback = document.getElementById('feedback');
+            const lines = code.split('\n');
+
+            const nodesMap = {};
+            const allNodes = [];
+
+            try {
+                // Pass 1: Identify all node creations (allocations)
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (!line || line.startsWith('//')) return;
+
+                    const nodeMatch = line.match(/(?:(?:const|let|var|Node)\s+)?([a-zA-Z_$][\w_$]*)\s*=\s*(?:new\s+Node)?\s*\(\s*(['"]?)(.*?)\2\s*\);?/i);
+                    if (nodeMatch) {
+                        const name = nodeMatch[1];
+                        const val = nodeMatch[3];
+                        const newNode = new MockNode(val);
+                        nodesMap[name] = newNode;
+                        allNodes.push(newNode);
+                    }
+                });
+
+                // Pass 2: Establish Pointers
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (!line || line.startsWith('//')) return;
+
+                    const nextMatch = line.match(/([a-zA-Z_$][\w_$]*)\.next\s*=\s*(?:null|([a-zA-Z_$][\w_$]*));?/i);
+                    if (nextMatch) {
+                        const from = nextMatch[1];
+                        const to = nextMatch[2];
+                        if (nodesMap[from]) {
+                            nodesMap[from].next = to ? nodesMap[to] : null;
+                        }
+                    }
+                });
+
+                // Render result
+                if (allNodes.length > 0) {
+                    viz.renderAll(allNodes);
+                }
+
+                // Validation Logic
+                // Start from node1 (A) and follow the chain
+                let current = nodesMap['node1'];
+                let sequence = [];
+                let count = 0;
+                while (current && count < 10) {
+                    sequence.push(current.value);
+                    current = current.next;
+                    count++;
+                }
+
+                const result = sequence.join('');
+                // Check if C is disconnected and its next is null
+                const nodeC = nodesMap['node3'];
+                const cIsNull = nodeC && nodeC.next === null;
+
+                if (result === 'ABD' && cIsNull) {
+                    feedback.innerHTML = '<i class="fas fa-check-circle"></i> Success! C is skipped and its pointer is nulled.';
+                    feedback.className = 'feedback-msg success';
+                } else {
+                    const seqStr = sequence.length > 0 ? sequence.join(' → ') : 'Empty';
+                    feedback.innerHTML = '<i class="fas fa-times-circle"></i> Failed. Current chain from node1: ' + seqStr + (cIsNull ? ' (C next is null)' : ' (C next is NOT null)');
+                    feedback.className = 'feedback-msg error';
+                }
+
+            } catch (err) {
+                feedback.innerHTML = 'Error: ' + err.message;
+                feedback.className = 'feedback-msg error';
+            }
+        }
+
+        // Run once on load
+        checkSolution();
+    </script>
+
+    <style>
+        .page-content {
+            padding: 3rem 0;
+        }
+
+        .challenge-hero {
+            margin-bottom: 3rem;
+        }
+
+        .badge {
+            background: #ec4899;
+            color: white;
+            padding: 0.2rem 1rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .challenge-info h1 {
+            font-size: 3rem;
+            margin: 1rem 0;
+        }
+
+        .challenge-ui {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .editor-side {
+            background: #0d1117;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            padding: 1rem 1.5rem;
+            background: var(--surface);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #challenge-editor {
+            flex-grow: 1;
+            min-height: 400px;
+            background: transparent;
+            color: #e6edf3;
+            padding: 1.5rem;
+            font-size: 0.95rem;
+            border: none;
+            outline: none;
+            font-family: 'Fira Code', monospace;
+            line-height: 1.6;
+            resize: both;
+            overflow: auto;
+        }
+
+        .feedback-msg {
+            padding: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .feedback-msg.success {
+            background: rgba(236, 72, 153, 0.2);
+            color: #ec4899;
+        }
+
+        .feedback-msg.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .hint {
+            margin-top: 1.5rem;
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .shadow-glow {
+            box-shadow: 0 0 40px rgba(236, 72, 153, 0.1);
+        }
+    </style>
+</body>
+
+</html>

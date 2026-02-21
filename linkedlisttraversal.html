@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traverse Linked List | LLMaster</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo"><a href="index.html" style="text-decoration: none; color: inherit;"><i
+                        class="fas fa-link"></i> LLMaster</a></div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="visualizer.html">Visualizer</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container page-content">
+        <div class="split-view">
+            <div class="explanation-side">
+                <h2>Traverse a Linked List</h2>
+                <p>Traversal is the most basic operation. It means visiting every node in the list once to process the
+                    data.</p>
+                <div class="steps-list">
+                    <div class="step">1. Start at the <code>head</code> of the linked list.</div>
+                    <div class="step">2. Check if the current node is <code>null</code>.</div>
+                    <div class="step">3. Process the data (e.g., print or search).</div>
+                    <div class="step">4. Move to <code>current.next</code> and repeat.</div>
+                </div>
+                <button onclick="startTraversalAnimation()" class="btn btn-filled" id="run-btn">Start Animation</button>
+
+                <div class="code-box">
+                    <div class="code-nav">
+                        <button class="t-btn active" onclick="setLang('java')">Java</button>
+                        <button class="t-btn" onclick="setLang('cpp')">C++</button>
+                        <button class="t-btn" onclick="setLang('py')">Python</button>
+                    </div>
+                    <pre id="code-display" class="fira-code"></pre>
+                </div>
+            </div>
+
+            <div class="viz-side">
+                <div id="prob-viz" class="visualizer-container shadow-glow"></div>
+                <div class="status-indicator" id="status-box">Ready to traverse...</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/linked-list.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script>
+        const list = new SinglyLinkedList();
+        const viz = new Visualizer('prob-viz', 'singly');
+        const status = document.getElementById('status-box');
+
+        ['A', 'B', 'C', 'D', 'E'].forEach(v => list.insertAtTail(v));
+        viz.render(list);
+
+        const codeMap = {
+            java: `public void traverse(ListNode head) {
+    ListNode current = head;
+    while (current != null) {
+        System.out.println(current.data);
+        current = current.next;
+    }
+}`,
+            cpp: `void traverse(ListNode* head) {
+    ListNode* current = head;
+    while (current != nullptr) {
+        cout << current->data << endl;
+        current = current->next;
+    }
+}`,
+            py: `def traverse(head):
+    current = head
+    while current:
+        print(current.data)
+        current = current.next`
+        };
+
+        function setLang(l) {
+            document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('code-display').innerText = codeMap[l];
+        }
+        setLang('java');
+
+        async function startTraversalAnimation() {
+            document.getElementById('run-btn').disabled = true;
+            status.innerText = "Starting traversal...";
+            await viz.traverse();
+            status.innerText = "Traversal Complete!";
+            document.getElementById('run-btn').disabled = false;
+        }
+    </script>
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 2rem;
+        }
+
+        .explanation-side h2 {
+            margin-bottom: 1.5rem;
+            font-size: 2.5rem;
+        }
+
+        .explanation-side p {
+            margin-bottom: 2rem;
+            color: var(--text-muted);
+        }
+
+        .steps-list {
+            margin-bottom: 2.5rem;
+        }
+
+        .step {
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .code-box {
+            margin-top: 2rem;
+            background: #0d1117;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .code-nav {
+            background: var(--surface-light);
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .t-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.5rem;
+        }
+
+        .t-btn.active {
+            color: var(--primary-light);
+        }
+
+        .viz-side {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .status-indicator {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            text-align: center;
+            border: 1px solid var(--primary);
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .shadow-glow {
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.2);
+        }
+    </style>
+</body>
+
+</html>
