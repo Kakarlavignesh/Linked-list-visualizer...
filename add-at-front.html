@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge: Front Insertion | LLMaster</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo"><a href="index.html" style="text-decoration: none; color: inherit;"><i
+                        class="fas fa-link"></i> LLMaster</a></div>
+            <ul class="nav-links">
+                <li><a href="index.html">Back to Home</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container page-content">
+        <section class="challenge-hero">
+            <div class="challenge-info">
+                <span class="badge">CHALLENGE #3</span>
+                <h1>Add at Front</h1>
+                <p><strong>Problem:</strong> You have a list <code>B → C</code>. Your task is to add node <code>A</code>
+                    at the <b>front</b> so that <code>A</code> becomes the new head.
+                </p>
+            </div>
+        </section>
+
+        <section class="challenge-ui">
+            <div class="editor-side">
+                <div class="editor-toolbar">
+                    <span><i class="fas fa-code"></i> Solution Editor</span>
+                    <button onclick="checkSolution()" class="btn btn-filled small">Submit & Test</button>
+                </div>
+                <textarea id="challenge-editor" class="fira-code" spellcheck="false">
+Node node2 = new Node("B");
+Node node3 = new Node("C");
+node2.next = node3;
+
+// Your task: Create node A and make it the NEW HEAD
+// Goal sequence: A -> B -> C
+                </textarea>
+                <div id="feedback" class="feedback-msg"></div>
+            </div>
+
+            <div class="viz-side">
+                <h3>Visual Live Result</h3>
+                <div id="challenge-viz" class="visualizer-container shadow-glow"></div>
+                <div class="hint">
+                    <i class="fas fa-lightbulb"></i> Hint: Create node1, then set node1.next to the old head.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/visualizer.js"></script>
+    <script>
+        class MockNode {
+            constructor(val) {
+                this.value = val;
+                this.next = null;
+            }
+        }
+
+        const viz = new Visualizer('challenge-viz', 'singly');
+
+        function checkSolution() {
+            const code = document.getElementById('challenge-editor').value;
+            const feedback = document.getElementById('feedback');
+            const lines = code.split('\n');
+
+            const nodesMap = {};
+            const allNodes = [];
+
+            try {
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (!line || line.startsWith('//')) return;
+                    const nodeMatch = line.match(/(?:(?:const|let|var|Node)\s+)?([a-zA-Z_$][\w_$]*)\s*=\s*(?:new\s+Node)?\s*\(\s*(['"]?)(.*?)\2\s*\);?/i);
+                    if (nodeMatch) {
+                        const name = nodeMatch[1];
+                        const val = nodeMatch[3];
+                        const newNode = new MockNode(val);
+                        nodesMap[name] = newNode;
+                        allNodes.push(newNode);
+                    }
+                });
+
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (!line || line.startsWith('//')) return;
+                    const nextMatch = line.match(/([a-zA-Z_$][\w_$]*)\.next\s*=\s*([a-zA-Z_$][\w_$]*);?/);
+                    if (nextMatch) {
+                        const from = nextMatch[1];
+                        const to = nextMatch[2];
+                        if (nodesMap[from] && nodesMap[to]) {
+                            nodesMap[from].next = nodesMap[to];
+                        }
+                    }
+                });
+
+                if (allNodes.length > 0) viz.renderAll(allNodes);
+
+                // Validation: A should be head, pointing to B, pointing to C
+                let head = nodesMap['node1'] || nodesMap['nodeA'] || allNodes.find(n => n.value === 'A');
+                let sequence = [];
+                let current = head;
+                let count = 0;
+                while (current && count < 5) {
+                    sequence.push(current.value);
+                    current = current.next;
+                    count++;
+                }
+
+                if (sequence.join('') === 'ABC') {
+                    feedback.innerHTML = '<i class="fas fa-check-circle"></i> Success! New Head is A.';
+                    feedback.className = 'feedback-msg success';
+                } else {
+                    feedback.innerHTML = '<i class="fas fa-times-circle"></i> Failed. Sequence: ' + (sequence.join(' → ') || 'Empty');
+                    feedback.className = 'feedback-msg error';
+                }
+            } catch (err) {
+                feedback.innerHTML = 'Error: ' + err.message;
+                feedback.className = 'feedback-msg error';
+            }
+        }
+        checkSolution();
+    </script>
+
+    <style>
+        .page-content {
+            padding: 3rem 0;
+        }
+
+        .challenge-hero {
+            margin-bottom: 3rem;
+        }
+
+        .badge {
+            background: var(--accent);
+            color: white;
+            padding: 0.2rem 1rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .challenge-info h1 {
+            font-size: 3rem;
+            margin: 1rem 0;
+        }
+
+        .challenge-ui {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .editor-side {
+            background: #0d1117;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            padding: 1rem 1.5rem;
+            background: var(--surface);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        #challenge-editor {
+            flex-grow: 1;
+            min-height: 400px;
+            background: transparent;
+            color: #e6edf3;
+            padding: 1.5rem;
+            font-size: 0.95rem;
+            border: none;
+            outline: none;
+            font-family: 'Fira Code', monospace;
+            line-height: 1.6;
+            resize: both;
+            overflow: auto;
+        }
+
+        .feedback-msg {
+            padding: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .feedback-msg.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent);
+        }
+
+        .feedback-msg.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .hint {
+            margin-top: 1.5rem;
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .shadow-glow {
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.1);
+        }
+    </style>
+</body>
+
+</html>
