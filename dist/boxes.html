@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linked List Boxes | LLMaster</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="boxes-body">
+    <header class="game-header">
+        <div class="header-left">
+            <h1>Linked List Boxes</h1>
+            <div class="controls">
+                <div class="input-group">
+                    <label>Boxes (n)</label>
+                    <input type="number" id="box-count" value="12" min="1" max="24">
+                </div>
+                <div class="input-group">
+                    <label>List Size (k)</label>
+                    <input type="number" id="list-size" value="5" min="1" max="12">
+                </div>
+                <button onclick="initGame()" class="btn-dark">Reset</button>
+                <button onclick="initGame()" class="btn-game">New Linked List</button>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="head-badge">Head: <span id="head-val">-</span></div>
+        </div>
+    </header>
+
+    <div class="clue-bar container">
+        <span id="clue-text">Click "New Linked List" to start!</span>
+    </div>
+
+    <main class="container">
+        <div id="boxes-grid" class="boxes-grid">
+            <!-- Boxes injected here -->
+        </div>
+    </main>
+
+    <div id="game-overlay" class="overlay hidden">
+        <div class="win-card">
+            <h2>🏆 Success!</h2>
+            <p>You followed the chain to the end! (NULL reached)</p>
+            <button onclick="initGame()" class="btn btn-filled">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        let gameData = {
+            total: 0,
+            size: 0,
+            chain: [],
+            currentStep: 0,
+            revealed: new Set()
+        };
+
+        function initGame() {
+            const n = parseInt(document.getElementById('box-count').value);
+            const k = parseInt(document.getElementById('list-size').value);
+
+            if (k > n) {
+                alert("List size cannot be greater than total boxes!");
+                return;
+            }
+
+            gameData = {
+                total: n,
+                size: k,
+                chain: [],
+                currentStep: 0,
+                revealed: new Set()
+            };
+
+            // Generate unique random indices
+            const indices = [];
+            while (indices.length < k) {
+                const r = Math.floor(Math.random() * n) + 1;
+                if (!indices.includes(r)) indices.push(r);
+            }
+
+            gameData.chain = indices;
+            document.getElementById('head-val').innerText = indices[0];
+            document.getElementById('clue-text').innerHTML = `Head &rarr; <span class="highlight">(click box #${indices[0]} to start)</span>`;
+            document.getElementById('game-overlay').classList.add('hidden');
+
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('boxes-grid');
+            grid.innerHTML = '';
+
+            for (let i = 1; i <= gameData.total; i++) {
+                const box = document.createElement('div');
+                box.className = 'box-card';
+                box.id = `box-${i}`;
+                box.innerHTML = `
+                    <div class="box-index">${i}</div>
+                    <div class="box-slots">
+                        <div class="slot data-slot">?</div>
+                        <div class="slot next-slot">?</div>
+                    </div>
+                `;
+                box.onclick = () => handleBoxClick(i);
+                grid.appendChild(box);
+            }
+        }
+
+        function handleBoxClick(index) {
+            const targetIndex = gameData.chain[gameData.currentStep];
+            const boxEl = document.getElementById(`box-${index}`);
+
+            if (index === targetIndex) {
+                // Correct box
+                const dataSlot = boxEl.querySelector('.data-slot');
+                const nextSlot = boxEl.querySelector('.next-slot');
+
+                const isLast = gameData.currentStep === gameData.chain.length - 1;
+                const nextVal = isLast ? 'NULL' : gameData.chain[gameData.currentStep + 1];
+
+                dataSlot.innerText = String.fromCharCode(65 + gameData.currentStep); // A, B, C...
+                nextSlot.innerText = nextVal;
+
+                boxEl.classList.add('active');
+                gameData.revealed.add(index);
+
+                if (isLast) {
+                    setTimeout(() => {
+                        document.getElementById('game-overlay').classList.remove('hidden');
+                    }, 500);
+                } else {
+                    gameData.currentStep++;
+                    document.getElementById('clue-text').innerHTML = `Next Pointer &rarr; <span class="highlight">(click box #${nextVal})</span>`;
+                }
+            } else {
+                // Wrong box
+                boxEl.classList.add('error-shake');
+                setTimeout(() => boxEl.classList.remove('error-shake'), 500);
+            }
+        }
+
+        // Initial launch
+        initGame();
+    </script>
+
+    <style>
+        :root {
+            --box-bg: #ffffff;
+            --box-text: #334155;
+            --slot-border: #cbd5e1;
+            --game-bg: #000000;
+        }
+
+        .boxes-body {
+            background: var(--game-bg);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .game-header {
+            background: #cbd5e1;
+            color: #334155;
+            padding: 1rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+        }
+
+        .header-left h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 50px;
+            padding: 0.3rem;
+            border-radius: 4px;
+            border: 1px solid #94a3b8;
+        }
+
+        .btn-dark {
+            background: #1e293b;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-game {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .head-badge {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 700;
+            color: #b45309;
+        }
+
+        .clue-bar {
+            padding: 1rem 0;
+            color: #94a3b8;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #1e293b;
+            margin-bottom: 2rem;
+        }
+
+        .highlight {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        .boxes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 2rem;
+            padding: 2rem 0;
+        }
+
+        .box-card {
+            background: var(--box-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 4px solid transparent;
+        }
+
+        .box-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+        }
+
+        .box-card.active {
+            border-color: #6366f1;
+            background: #f8fafc;
+        }
+
+        .box-index {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 1.5rem;
+        }
+
+        .box-slots {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .slot {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--slot-border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #475569;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .active .slot {
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+
+        .next-slot {
+            position: relative;
+        }
+
+        .error-shake {
+            animation: shake 0.4s;
+            border-color: #ef4444;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-10px);
+            }
+
+            75% {
+                transform: translateX(10px);
+            }
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .win-card {
+            background: #1e293b;
+            padding: 3rem;
+            border-radius: 2rem;
+            text-align: center;
+            border: 2px solid #6366f1;
+            box-shadow: 0 0 50px rgba(99, 102, 241, 0.4);
+        }
+
+        .win-card h2 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .win-card p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            color: #94a3b8;
+        }
+    </style>
+</body>
+
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reverse Linked List | LLMaster</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo"><a href="index.html" style="text-decoration: none; color: inherit;"><i
+                        class="fas fa-link"></i> LLMaster</a></div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="visualizer.html">Visualizer</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container page-content">
+        <div class="split-view">
+            <div class="explanation-side">
+                <h2>Reverse a Linked List</h2>
+                <p>Reversing a linked list involves flipping the direction of the <code>next</code> pointers for every
+                    node.</p>
+                <div class="steps-list">
+                    <div class="step">1. Maintain <code>prev</code>, <code>curr</code>, and <code>next</code> pointers.
+                    </div>
+                    <div class="step">2. At each step, store <code>curr.next</code> in <code>next</code>.</div>
+                    <div class="step">3. Point <code>curr.next</code> to <code>prev</code>.</div>
+                    <div class="step">4. Move <code>prev</code> and <code>curr</code> one step forward.</div>
+                </div>
+                <button onclick="startReverseAnimation()" class="btn btn-filled" id="run-btn">Start Animation</button>
+
+                <div class="code-box">
+                    <div class="code-nav">
+                        <button class="t-btn active" onclick="setLang('java')">Java</button>
+                        <button class="t-btn" onclick="setLang('cpp')">C++</button>
+                        <button class="t-btn" onclick="setLang('py')">Python</button>
+                    </div>
+                    <pre id="code-display" class="fira-code"></pre>
+                </div>
+            </div>
+
+            <div class="viz-side">
+                <div id="prob-viz" class="visualizer-container shadow-glow"></div>
+                <div class="status-indicator" id="status-box">Ready to visualize reversal...</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/linked-list.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script>
+        const list = new SinglyLinkedList();
+        const viz = new Visualizer('prob-viz', 'singly');
+        const status = document.getElementById('status-box');
+
+        ['A', 'B', 'C', 'D', 'E'].forEach(v => list.insertAtTail(v));
+        viz.render(list);
+
+        const codeMap = {
+            java: `public ListNode reverseList(ListNode head) {
+    ListNode prev = null;
+    ListNode curr = head;
+    while (curr != null) {
+        ListNode nextTemp = curr.next;
+        curr.next = prev;
+        prev = curr;
+        curr = nextTemp;
+    }
+    return prev;
+}`,
+            cpp: `ListNode* reverseList(ListNode* head) {
+    ListNode *prev = nullptr, *curr = head;
+    while (curr) {
+        ListNode* next = curr->next;
+        curr->next = prev;
+        prev = curr;
+        curr = next;
+    }
+    return prev;
+}`,
+            py: `def reverseList(self, head: ListNode) -> ListNode:
+    prev = None
+    curr = head
+    while curr:
+        next_node = curr.next
+        curr.next = prev
+        prev = curr
+        curr = next_node
+    return prev`
+        };
+
+        function setLang(l) {
+            document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('code-display').innerText = codeMap[l];
+        }
+        setLang('java');
+
+        async function startReverseAnimation() {
+            document.getElementById('run-btn').disabled = true;
+            let prev = null;
+            let curr = list.head;
+            let i = 0;
+
+            while (curr) {
+                status.innerText = `Step ${i + 1}: Pointing ${curr.value}.next to ${prev ? prev.value : 'null'}`;
+                await viz.highlightNode(i, '#ec4899');
+                let next = curr.next;
+                curr.next = prev;
+                prev = curr;
+                curr = next;
+                i++;
+                await new Promise(r => setTimeout(r, 1000));
+            }
+            list.head = prev;
+            viz.render(list);
+            status.innerText = "Reversal Complete!";
+            document.getElementById('run-btn').disabled = false;
+        }
+    </script>
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 2rem;
+        }
+
+        .explanation-side h2 {
+            margin-bottom: 1.5rem;
+            font-size: 2.5rem;
+        }
+
+        .explanation-side p {
+            margin-bottom: 2rem;
+            color: var(--text-muted);
+        }
+
+        .steps-list {
+            margin-bottom: 2.5rem;
+        }
+
+        .step {
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .code-box {
+            margin-top: 2rem;
+            background: #0d1117;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .code-nav {
+            background: var(--surface-light);
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .t-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.5rem;
+        }
+
+        .t-btn.active {
+            color: var(--primary-light);
+        }
+
+        .viz-side {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .status-indicator {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            text-align: center;
+            border: 1px solid var(--primary);
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .shadow-glow {
+            box-shadow: 0 0 40px rgba(236, 72, 153, 0.2);
+        }
+    </style>
+</body>
+
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circular Linked List | LLMaster</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <i class="fas fa-link"></i>
+                <span>LL<span>Master</span></span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li class="dropdown">
+                    <a href="#" class="active">Types <i class="fas fa-chevron-down"></i></a>
+                    <ul class="dropdown-content">
+                        <li><a href="singly.html">Singly Linked List</a></li>
+                        <li><a href="doubly.html">Doubly Linked List</a></li>
+                        <li><a href="circular.html">Circular Linked List</a></li>
+                    </ul>
+                </li>
+                <li><a href="visualizer.html">Visualizer</a></li>
+                <li><a href="playground.html" class="btn-primary">Try It Yourself</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container page-content">
+        <section class="intro-section">
+            <h1>Circular Linked List</h1>
+            <p>In a Circular Linked List, the last node points back to the first node instead of <strong>Null</strong>.
+                This creates a circular loop, making it useful for handling continuous cycles like process scheduling.
+            </p>
+        </section>
+
+        <section class="viz-playground">
+            <div class="playground-header">
+                <h2>Interactive Visualizer</h2>
+                <div class="playground-controls">
+                    <div class="control-group">
+                        <input type="number" id="nodeValue" placeholder="Value">
+                        <button onclick="insertTail()" class="btn btn-filled">Insert Tail</button>
+                    </div>
+                </div>
+            </div>
+            <div id="circular-viz" class="visualizer-container"></div>
+            <div class="status-bar" id="status">Notice the last node's 'next' pointer!</div>
+        </section>
+
+        <section class="code-snippets">
+            <h2>Python Example</h2>
+            <div class="code-container">
+                <pre class="fira-code">
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+
+class CircularLinkedList:
+    def __init__(self):
+        self.head = None
+
+    def append(self, value):
+        new_node = Node(value)
+        if not self.head:
+            self.head = new_node
+            new_node.next = self.head
+        else:
+            temp = self.head
+            while temp.next != self.head:
+                temp = temp.next
+            temp.next = new_node
+            new_node.next = self.head
+                </pre>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/linked-list.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script>
+        const list = new CircularLinkedList();
+        const viz = new Visualizer('circular-viz', 'circular');
+        const status = document.getElementById('status');
+
+        async function insertTail() {
+            const val = document.getElementById('nodeValue').value || Math.floor(Math.random() * 100);
+            list.insertAtTail(val);
+            viz.render(list);
+            await viz.highlightNode(list.size - 1, '#10b981');
+        }
+
+        [1, 2, 3].forEach(v => list.insertAtTail(v));
+        viz.render(list);
+    </script>
+    <style>
+        .page-content {
+            padding-top: 4rem;
+        }
+
+        .intro-section h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .viz-playground {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            margin-bottom: 4rem;
+        }
+
+        .status-bar {
+            padding: 0.75rem;
+            background: var(--surface-light);
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--primary-light);
+        }
+
+        .code-container {
+            background: #010409;
+            padding: 2rem;
+            border-radius: 1rem;
+            overflow-x: auto;
+        }
+
+        .fira-code {
+            font-family: 'Fira Code', monospace;
+            color: #e6edf3;
+            font-size: 0.95rem;
+        }
+    </style>
+</body>
+
+</html>

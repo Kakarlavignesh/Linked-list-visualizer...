@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMaster | Interactive Linked List Hub</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <i class="fas fa-link"></i>
+                <span>LL<span>Master</span></span>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="problem-search" placeholder="Search problems (e.g. Reverse)..."
+                    onkeyup="searchProblems()">
+                <i class="fas fa-search"></i>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="visualizer.html" class="active">Visualizer</a></li>
+                <li><a href="playground.html" class="btn-primary">Try Editor</a></li>
+                <li><button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- 1. Featured Tool Section -->
+        <section class="hero-featured" id="visualizer-playground">
+            <div class="featured-card glow-blue">
+                <div class="featured-badge">FEATURED TOOL</div>
+                <h2>Linked List Visualizer Playground</h2>
+                <p>Animate nodes, pointers, and operations in a colorful visual playground.</p>
+                <a href="visualizer.html" class="btn btn-filled">Open Visualizer <i class="fas fa-rocket"></i></a>
+            </div>
+        </section>
+
+        <!-- 2. Linked List Code Library Section -->
+        <section class="section-container" id="code-library">
+            <div class="section-header">
+                <h2>Linked List Code Library</h2>
+                <p class="subtitle">Below is list of precoded linked list problems that you can directly visualize.</p>
+            </div>
+            <div class="problem-grid">
+                <div class="problem-card" data-title="Reverse a Linked List">
+                    <div class="card-icon"><i class="fas fa-history"></i></div>
+                    <h3>Reverse a Linked List</h3>
+                    <p>(A → B → C → D → E) to (E → D → C → B → A)</p>
+                    <a href="reverseLinkedList.html" class="btn btn-outline">Visualize Problem</a>
+                </div>
+                <div class="problem-card" data-title="Traverse a Linked List">
+                    <div class="card-icon"><i class="fas fa-shoe-prints"></i></div>
+                    <h3>Traverse a Linked List</h3>
+                    <p>Learn how to step through nodes (A → B → C)</p>
+                    <a href="linkedlisttraversal.html" class="btn btn-outline">Visualize Problem</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Linked List Story Section -->
+        <section class="section-container" id="story-section">
+            <div class="section-header">
+                <h2>Linked List Story</h2>
+            </div>
+            <div class="story-grid">
+                <div class="story-card">
+                    <div class="story-image">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <div class="story-content">
+                        <h3>A sweet story of a thief</h3>
+                        <p>Learn the structure of Linked List by playing the fun <strong>Box Game</strong>.</p>
+                        <a href="boxes.html" class="btn btn-secondary">Play <i class="fas fa-play"></i></a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Engineering Animuthyam Challenge Section -->
+        <section class="section-container" id="challenges">
+            <div class="section-header">
+                <h2>Engineering Animuthyam Challenge</h2>
+                <p class="subtitle">Below are list of Challenges that are used in Linked List in Single shot</p>
+            </div>
+            <div class="challenge-grid">
+                <div class="challenge-card">
+                    <div class="challenge-header">
+                        <i class="fas fa-tools"></i>
+                        <span>Challenge #1</span>
+                    </div>
+                    <h3>Middle Insertion</h3>
+                    <p>Adding D,E in between B and C</p>
+                    <a href="add-de-between-bc.html" class="btn btn-filled small">Start Challenge</a>
+                </div>
+                <div class="challenge-card">
+                    <div class="challenge-header">
+                        <i class="fas fa-link-slash"></i>
+                        <span>Challenge #2</span>
+                    </div>
+                    <h3>Pointer Manipulation</h3>
+                    <p>B’s next should directly point to D (C next is null)</p>
+                    <a href="b-next-to-d.html" class="btn btn-filled small">Start Challenge</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <div class="progress-info">
+                <span>Personal Progress:</span>
+                <div class="progress-bar-mini">
+                    <div class="progress-fill" id="progress-indicator" style="width: 20%;"></div>
+                </div>
+                <span id="progress-text">1/5 Complete</span>
+            </div>
+            <p>&copy; 2024 LLMaster - Premium CS Visuals</p>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        function searchProblems() {
+            let input = document.getElementById('problem-search').value.toLowerCase();
+            let cards = document.querySelectorAll('.problem-card');
+            cards.forEach(card => {
+                let title = card.getAttribute('data-title').toLowerCase();
+                if (title.includes(input)) {
+                    card.style.display = "";
+                } else {
+                    card.style.display = "none";
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
