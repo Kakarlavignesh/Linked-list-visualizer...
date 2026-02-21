@@ -19,8 +19,8 @@ Master the Linked List data structure through premium visualizations, interactiv
 - `/singly.html`, `/doubly.html`, `/circular.html`: Concept pages.
 - `/linkedlistVisualizer.html`: Full-screen playground.
 - `/reverseLinkedList.html`, `/linkedlisttraversal.html`: Code library items.
-- `/linkedlist.html`: Story mode page.
-- `/add-de-between-bc.html`, `/b-next-to-d.html`: Coding challenges.
+- `/linkedlist.html`, `/boxes.html`: Story mode and "Box Game".
+- `/add-de-between-bc.html`, `/b-next-to-d.html`, `/add-at-front.html`, `/add-at-end.html`: Crazy coding challenges.
 
 ## 🛠️ How to Run
 1. Clone or download the project.
