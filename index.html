@@ -21,8 +21,15 @@
             </div>
             <div class="search-bar">
                 <input type="text" id="problem-search" placeholder="Search problems (e.g. Reverse)..."
-                    onkeyup="searchProblems()">
+                    onkeyup="searchProblems(event)" list="search-suggestions">
                 <i class="fas fa-search"></i>
+                <datalist id="search-suggestions">
+                    <option value="Reverse a Linked List">
+                    <option value="Traverse a Linked List">
+                    <option value="A sweet story of a thief (Box Game)">
+                    <option value="Middle Insertion Challenge">
+                    <option value="Pointer Manipulation Challenge">
+                </datalist>
             </div>
             <ul class="nav-links">
                 <li><a href="index.html" class="active">Home</a></li>
@@ -72,7 +79,7 @@
                 <h2>Linked List Story</h2>
             </div>
             <div class="story-grid">
-                <div class="story-card">
+                <div class="story-card" data-title="A sweet story of a thief story box game">
                     <div class="story-image">
                         <i class="fas fa-book-open"></i>
                     </div>
@@ -88,11 +95,11 @@
         <!-- 4. Engineering Animuthyam Challenge Section -->
         <section class="section-container" id="challenges">
             <div class="section-header">
-                <h2>Engineering Animuthyam Challenge</h2>
+                <h2>Crazy Challenges</h2>
                 <p class="subtitle">Below are list of Challenges that are used in Linked List in Single shot</p>
             </div>
             <div class="challenge-grid">
-                <div class="challenge-card">
+                <div class="challenge-card" data-title="Middle Insertion Challenge">
                     <div class="challenge-header">
                         <i class="fas fa-tools"></i>
                         <span>Challenge #1</span>
@@ -101,7 +108,7 @@
                     <p>Adding D,E in between B and C</p>
                     <a href="add-de-between-bc.html" class="btn btn-filled small">Start Challenge</a>
                 </div>
-                <div class="challenge-card">
+                <div class="challenge-card" data-title="Pointer Manipulation Challenge">
                     <div class="challenge-header">
                         <i class="fas fa-link-slash"></i>
                         <span>Challenge #2</span>
@@ -129,17 +136,25 @@
 
     <script src="js/main.js"></script>
     <script>
-        function searchProblems() {
+        function searchProblems(event) {
             let input = document.getElementById('problem-search').value.toLowerCase();
-            let cards = document.querySelectorAll('.problem-card');
+            let cards = document.querySelectorAll('.problem-card, .story-card, .challenge-card');
+            let firstMatch = null;
+
             cards.forEach(card => {
                 let title = card.getAttribute('data-title').toLowerCase();
                 if (title.includes(input)) {
                     card.style.display = "";
+                    if (!firstMatch) firstMatch = card;
                 } else {
                     card.style.display = "none";
                 }
             });
+
+            // If Enter key is pressed and we have a match, scroll to it
+            if (event && (event.key === 'Enter' || event.type === 'change') && firstMatch) {
+                firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     </script>
 </body>

@@ -66,6 +66,7 @@ h3,
 .text-gradient {
     background: linear-gradient(to right, var(--primary-light), var(--secondary));
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -577,6 +578,10 @@ footer {
     padding: 0.6rem 1rem 0.6rem 2.5rem;
     border-radius: 9999px;
     background: var(--surface-light);
+    color: var(--text);
+    border: 1px solid var(--border);
+    outline: none;
+    font-family: inherit;
 }
 
 .search-bar i {
