@@ -7,11 +7,15 @@
     <title>Reverse Linked List | LLMaster</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 
 <body>
     <header>
         <nav class="container">
+            <a href="index.html" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
             <div class="logo"><a href="index.html" style="text-decoration: none; color: inherit;"><i
                         class="fas fa-link"></i> LLMaster</a></div>
             <ul class="nav-links">
@@ -34,7 +38,8 @@
                     <div class="step">3. Point <code>curr.next</code> to <code>prev</code>.</div>
                     <div class="step">4. Move <code>prev</code> and <code>curr</code> one step forward.</div>
                 </div>
-                <button onclick="startReverseAnimation()" class="btn btn-filled" id="run-btn">Start Animation</button>
+                <button onclick="startReverseAnimation(event)" class="btn btn-filled" id="run-btn">Start
+                    Animation</button>
 
                 <div class="code-box">
                     <div class="code-nav">
@@ -103,7 +108,8 @@
         }
         setLang('java');
 
-        async function startReverseAnimation() {
+        async function startReverseAnimation(event) {
+            if (event) event.preventDefault();
             document.getElementById('run-btn').disabled = true;
             let prev = null;
             let curr = list.head;
@@ -114,6 +120,10 @@
                 await viz.highlightNode(i, '#ec4899');
                 let next = curr.next;
                 curr.next = prev;
+
+                // Show the current state of links
+                viz.renderAll([curr]); // Render from current to see backward link
+
                 prev = curr;
                 curr = next;
                 i++;

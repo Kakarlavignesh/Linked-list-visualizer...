@@ -1,204 +1,292 @@
 /**
- * Linked List Visualizer Engine
- * Handles rendering nodes and arrows with animations.
+ * Linked List Visualizer Engine v2.0
+ * Handles SVG arrows, GSAP animations, and multi-pointer tracking.
  */
 
 class Visualizer {
     constructor(containerId, listType = 'singly') {
         this.container = document.getElementById(containerId);
+        // Special support for zooming wrapper in playground and visualizer
+        this.renderTarget = document.getElementById('viz-wrapper') || document.getElementById('viz-scale-wrapper') || this.container;
         this.listType = listType;
         this.nodes = [];
+        this.nodeElements = new Map(); // Link MockNode object to DOM Element
+        this.svgContainer = null;
+        this.pointers = {}; // { 'slow': element, 'fast': element }
+        this.init();
     }
 
-    // Original head-based render
-    render(list) {
-        this.container.innerHTML = '';
-        const nodeArray = [];
+    init() {
+        this.renderTarget.innerHTML = '';
+        this.renderTarget.style.position = 'relative';
 
-        let current = list.head;
-        let count = 0;
-        const maxNodes = list.size;
+        // Create SVG overlay for arrows
+        this.svgContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        this.svgContainer.setAttribute('class', 'viz-svg-overlay');
+        this.svgContainer.style.position = 'absolute';
+        this.svgContainer.style.top = '0';
+        this.svgContainer.style.left = '0';
+        this.svgContainer.style.width = '5000px'; // Wide enough for long lists
+        this.svgContainer.style.height = '100%';
+        this.svgContainer.style.pointerEvents = 'none';
+        this.svgContainer.style.zIndex = '1';
+        this.renderTarget.appendChild(this.svgContainer);
 
-        while (current && count < 20) { // Limit for visualization sanity
-            const nodeEl = this.createNodeElement(current.value, count);
-            this.container.appendChild(nodeEl);
-            nodeArray.push(nodeEl);
+        // Marker for arrowheads
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+        const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        marker.setAttribute('id', 'arrowhead');
+        marker.setAttribute('markerWidth', '10');
+        marker.setAttribute('markerHeight', '7');
+        marker.setAttribute('refX', '9');
+        marker.setAttribute('refY', '3.5');
+        marker.setAttribute('orient', 'auto');
+        const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+        polygon.setAttribute('fill', '#6366f1');
+        marker.appendChild(polygon);
+        defs.appendChild(marker);
 
-            // Add Arrow
-            if (current.next && (this.listType !== 'circular' || current.next !== list.head)) {
-                const arrow = this.createArrow();
-                this.container.appendChild(arrow);
-            } else if (this.listType === 'circular' && list.size > 0) {
-                const arrow = this.createArrow('circular');
-                this.container.appendChild(arrow);
-            }
+        // Marker for cyclic arrowheads (red)
+        const markerRed = marker.cloneNode(true);
+        markerRed.setAttribute('id', 'arrowhead-red');
+        markerRed.querySelector('polygon').setAttribute('fill', '#ff7b72');
+        defs.appendChild(markerRed);
 
-            current = current.next;
-            if (this.listType === 'circular' && current === list.head) break;
-            count++;
-        }
+        // Marker for backward arrows (doubly)
+        const markerBack = marker.cloneNode(true);
+        markerBack.setAttribute('id', 'arrowhead-back');
+        markerBack.querySelector('polygon').setAttribute('fill', '#ec4899');
+        defs.appendChild(markerBack);
 
-        if (nodeArray.length === 0) {
-            this.container.innerHTML = '<div class="empty-msg">List is empty. Add a node to start!</div>';
-        }
-
-        this.nodes = nodeArray;
+        this.svgContainer.appendChild(defs);
     }
 
-    // Updated method to render a list of all allocated nodes
     renderAll(allNodes) {
-        this.container.innerHTML = '';
-        const nodeArray = [];
+        // Clear previous state
+        const oldScrollX = this.container.scrollLeft;
+        this.init();
+        this.nodeElements.clear();
+
+        const nodeWrapper = document.createElement('div');
+        nodeWrapper.className = 'nodes-wrapper';
+        nodeWrapper.style.display = 'flex';
+        nodeWrapper.style.alignItems = 'center';
+        nodeWrapper.style.padding = '60px 20px'; // Reduced padding for tutorial pages
+        nodeWrapper.style.gap = '60px'; // Reduced gap to avoid overflow
+        nodeWrapper.style.position = 'relative';
+        nodeWrapper.style.zIndex = '2';
+        this.renderTarget.appendChild(nodeWrapper);
+
         const renderedSet = new Set();
         let displayCount = 0;
 
-        allNodes.forEach((node, index) => {
-            if (renderedSet.has(node)) return;
+        // allNodes can be a single starting node or an array of starting nodes
+        const startNodes = Array.isArray(allNodes) ? allNodes : [allNodes];
+
+        startNodes.forEach((node, index) => {
+            if (!node || renderedSet.has(node)) return;
 
             let current = node;
-            while (current && !renderedSet.has(current) && displayCount < 20) {
+            while (current && !renderedSet.has(current) && displayCount < 40) {
                 renderedSet.add(current);
                 const nodeEl = this.createNodeElement(current.value, displayCount);
-
-                // Set the specific label (e.g., A1, B2)
-                const idLabel = nodeEl.querySelector('.node-id');
-                if (idLabel) {
-                    idLabel.innerText = `${current.value}${index + 1}`;
-                }
-
-                this.container.appendChild(nodeEl);
-                nodeArray.push(nodeEl);
-
-                if (current.next && !renderedSet.has(current.next)) {
-                    this.container.appendChild(this.createArrow());
-                }
+                nodeWrapper.appendChild(nodeEl);
+                this.nodeElements.set(current, nodeEl);
 
                 current = current.next;
                 displayCount++;
             }
-
-            // Add a gap if there are more nodes at the top level
-            if (displayCount < allNodes.length) {
-                const spacer = document.createElement('div');
-                spacer.className = 'viz-spacer';
-                this.container.appendChild(spacer);
-            }
         });
 
-        if (nodeArray.length === 0) {
-            this.container.innerHTML = '<div class="empty-msg">List is empty. Add a node to start!</div>';
+        // Add arrows after elements are in DOM to get positions
+        setTimeout(() => this.drawArrows(startNodes, renderedSet), 50);
+        this.container.scrollLeft = oldScrollX;
+    }
+
+    // BACKWARD COMPATIBILITY: render(list)
+    render(list) {
+        if (!list || !list.head) return this.renderAll([]);
+        this.renderAll([list.head]);
+    }
+
+    // BACKWARD COMPATIBILITY: traverse()
+    async traverse() {
+        // Step through currently rendered nodes
+        const nodes = Array.from(this.nodeElements.keys());
+        for (const node of nodes) {
+            await this.highlightNode(node, '#6366f1');
+            await new Promise(r => setTimeout(r, 800));
         }
-        this.nodes = nodeArray;
+    }
+
+    drawArrows(allNodes, renderedSet) {
+        renderedSet.forEach(node => {
+            // Forward/Singly/Cycle Links
+            if (node.next && this.nodeElements.has(node)) {
+                // If the next node is hidden (not in renderedSet due to max nodes), don't draw
+                if (this.nodeElements.has(node.next)) {
+                    const fromEl = this.nodeElements.get(node);
+                    const toEl = this.nodeElements.get(node.next);
+                    const isCycle = [...renderedSet].indexOf(node.next) <= [...renderedSet].indexOf(node);
+                    this.drawArrow(fromEl, toEl, isCycle, 'next');
+                }
+            }
+            // Backward/Doubly Links
+            if (node.prev && this.nodeElements.has(node) && this.nodeElements.has(node.prev)) {
+                const fromEl = this.nodeElements.get(node);
+                const toEl = this.nodeElements.get(node.prev);
+                this.drawArrow(fromEl, toEl, false, 'prev');
+            }
+        });
+    }
+
+    drawArrow(fromEl, toEl, isCycle = false, type = 'next') {
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+        const targetRect = this.renderTarget.getBoundingClientRect();
+
+        let x1, y1, x2, y2;
+
+        if (type === 'next') {
+            x1 = fromRect.right - targetRect.left;
+            y1 = fromRect.top + fromRect.height * 0.4 - targetRect.top;
+            x2 = toRect.left - targetRect.left;
+            y2 = toRect.top + toRect.height * 0.4 - targetRect.top;
+        } else {
+            // Adjust offsets for prev arrows to avoid overlap
+            x1 = fromRect.left - targetRect.left;
+            y1 = fromRect.top + fromRect.height * 0.6 - targetRect.top;
+            x2 = toRect.right - targetRect.left;
+            y2 = toRect.top + toRect.height * 0.6 - targetRect.top;
+        }
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+        let d;
+        if (isCycle) {
+            const midY = y1 - 80; // slightly smaller cycle curve
+            d = `M ${x1 - 10} ${y1} C ${x1 - 10} ${midY}, ${x2 + 10} ${midY}, ${x2 + 10} ${y2}`;
+            path.setAttribute('marker-end', 'url(#arrowhead-red)');
+            path.setAttribute('stroke', '#ff7b72');
+            path.setAttribute('stroke-dasharray', '5,5');
+        } else if (type === 'prev') {
+            // Curve backward arrows slightly downwards
+            const midX = (x1 + x2) / 2;
+            const midY = y1 + 40;
+            d = `M ${x1} ${y1} Q ${midX} ${midY}, ${x2 + 5} ${y2}`;
+            path.setAttribute('marker-end', 'url(#arrowhead-back)');
+            path.setAttribute('stroke', '#ec4899');
+        } else {
+            d = `M ${x1} ${y1} L ${x2 - 5} ${y2}`;
+            path.setAttribute('marker-end', 'url(#arrowhead)');
+            path.setAttribute('stroke', '#6366f1');
+        }
+
+        path.setAttribute('d', d);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-width', '2.5');
+        path.setAttribute('class', 'draw-path');
+        this.svgContainer.appendChild(path);
     }
 
     createNodeElement(value, index) {
         const div = document.createElement('div');
-        div.className = 'visual-node pulse';
-        div.setAttribute('data-index', index);
-        div.style.animationDelay = `${index * 0.1}s`;
-
+        div.className = 'visual-node';
         div.innerHTML = `
             <div class="node-internal">
-                <div class="node-section">
+                <div class="node-section data-sec">
                     <span class="section-label">DATA</span>
                     <div class="node-data">${value}</div>
                 </div>
-                <div class="node-section">
+                <div class="node-section next-sec">
                     <span class="section-label">NEXT</span>
                     <div class="node-ptr">next</div>
                 </div>
             </div>
             <div class="node-id">n${index + 1}</div>
         `;
-
-        if (this.listType === 'doubly') {
-            div.classList.add('doubly');
-            div.innerHTML = `
-                <div class="node-internal">
-                    <div class="node-section">
-                        <span class="section-label">PREV</span>
-                        <div class="node-ptr prev">prev</div>
-                    </div>
-                    <div class="node-section">
-                        <span class="section-label">DATA</span>
-                        <div class="node-data">${value}</div>
-                    </div>
-                    <div class="node-section">
-                        <span class="section-label">NEXT</span>
-                        <div class="node-ptr next">next</div>
-                    </div>
-                </div>
-                <div class="node-id">n${index + 1}</div>
-            `;
-        }
-
         return div;
     }
 
-    createArrow(type = 'normal') {
-        const arrow = document.createElement('div');
-        arrow.className = `visual-arrow ${type}`;
-        arrow.innerHTML = type === 'circular' ? '<i class="fas fa-undo"></i>' : '<i class="fas fa-arrow-right"></i>';
-        if (this.listType === 'doubly' && type === 'normal') {
-            arrow.innerHTML = '<i class="fas fa-exchange-alt"></i>';
+    // BACKWARD COMPATIBILITY: highlightNode(index OR object)
+    async highlightNode(nodeOrIndex, color = '#10b981') {
+        let node = nodeOrIndex;
+        if (typeof nodeOrIndex === 'number') {
+            const nodes = Array.from(this.nodeElements.keys());
+            node = nodes[nodeOrIndex];
         }
-        return arrow;
+
+        const el = this.nodeElements.get(node);
+        if (!el) return;
+
+        return new Promise(resolve => {
+            gsap.to(el, {
+                borderColor: color,
+                boxShadow: `0 0 25px ${color}`,
+                scale: 1.1,
+                duration: 0.3,
+                yoyo: true,
+                repeat: 1,
+                onComplete: resolve
+            });
+        });
     }
 
-    async highlightNode(index, color = '#ec4899') {
-        if (index < 0 || index >= this.nodes.length) return;
-        const node = this.nodes[index];
-        node.style.borderColor = color;
-        node.style.boxShadow = `0 0 20px ${color}`;
-        node.style.transform = 'scale(1.1)';
+    updatePointers(nodePointers) {
+        // nodePointers: { 'slow': nodeObj, 'fast': nodeObj }
+        Object.entries(nodePointers).forEach(([name, node]) => {
+            const nodeEl = this.nodeElements.get(node);
+            if (!nodeEl) return;
 
-        await new Promise(r => setTimeout(r, 600));
+            let ptrEl = this.container.querySelector(`.ptr-tag.${name}`);
+            if (!ptrEl) {
+                ptrEl = document.createElement('div');
+                ptrEl.className = `ptr-tag ${name}`;
+                ptrEl.innerText = name.toUpperCase();
+                this.container.appendChild(ptrEl);
+            }
 
-        node.style.borderColor = '';
-        node.style.boxShadow = '';
-        node.style.transform = '';
-    }
+            const rect = nodeEl.getBoundingClientRect();
+            const containerRect = this.container.getBoundingClientRect();
+            const x = rect.left + rect.width / 2 - containerRect.left + this.container.scrollLeft;
+            const y = rect.bottom - containerRect.top + this.container.scrollTop + 10;
 
-    async traverse(targetIndex = -1) {
-        for (let i = 0; i < this.nodes.length; i++) {
-            await this.highlightNode(i, '#10b981');
-            if (i === targetIndex) return;
-        }
+            gsap.to(ptrEl, {
+                left: x,
+                top: y,
+                duration: 0.5,
+                ease: "power2.out"
+            });
+        });
     }
 }
 
-// Add CSS for visualization elements via JS to keep it portable
+// Global Styles for Premium Visualization
 const vizStyles = `
-    .visualizer-container {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        padding: 4rem 2rem;
-        overflow-x: auto;
-        min-height: 350px;
-        gap: 0;
-        background: transparent;
-        scroll-behavior: smooth;
+    .viz-svg-overlay {
+        overflow: visible !important;
     }
     
+    .nodes-wrapper {
+        min-width: 100%;
+    }
+
     .visual-node {
         position: relative;
-        background: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 0.75rem;
-        min-width: 160px;
-        display: flex;
-        flex-direction: column;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        background: rgba(22, 27, 34, 0.8);
+        backdrop-filter: blur(8px);
+        border: 2px solid #30363d;
+        border-radius: 12px;
+        min-width: 140px;
+        transition: border-color 0.3s, transform 0.3s;
         flex-shrink: 0;
-        margin: 1rem 0;
     }
 
     .node-internal {
         display: flex;
-        width: 100%;
-        border-radius: 0.75rem;
         overflow: hidden;
+        border-radius: 10px;
     }
 
     .node-section {
@@ -209,62 +297,71 @@ const vizStyles = `
         border-right: 1px solid #30363d;
     }
 
-    .node-section:last-child {
-        border-right: none;
-    }
+    .node-section:last-child { border-right: none; }
 
     .section-label {
-        font-size: 0.65rem;
-        color: #58a6ff;
-        font-weight: 700;
-        padding: 0.4rem 0.2rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        font-size: 0.6rem;
+        color: #8b949e;
         background: #0d1117;
         width: 100%;
         text-align: center;
+        padding: 4px 0;
+        letter-spacing: 1px;
         border-bottom: 1px solid #30363d;
     }
-    
+
     .node-data {
-        padding: 0.8rem;
-        text-align: center;
+        padding: 15px;
+        font-size: 1.5rem;
         font-weight: 700;
-        font-size: 1.1rem;
         color: #fff;
-        width: 100%;
     }
-    
+
     .node-ptr {
-        padding: 0.8rem;
-        color: #8b949e;
-        font-size: 0.75rem;
-        text-align: center;
-        width: 100%;
+        padding: 15px;
+        color: #6366f1;
+        font-size: 0.8rem;
+        font-weight: 600;
     }
 
     .node-id {
         position: absolute;
-        top: -28px;
+        top: -30px;
         left: 50%;
         transform: translateX(-50%);
         background: #238636;
-        color: #fff;
-        font-weight: 600;
-        font-size: 0.75rem;
-        padding: 2px 10px;
-        border-radius: 12px;
-        border: 1px solid #30363d;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-        z-index: 5;
+        color: white;
+        padding: 2px 12px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.4);
     }
 
-    .viz-spacer {
-        width: 60px;
-        flex-shrink: 0;
-        height: 2px;
-        background: repeating-linear-gradient(90deg, #30363d, #30363d 5px, transparent 5px, transparent 10px);
-        margin: 0 10px;
+    .ptr-tag {
+        position: absolute;
+        padding: 4px 10px;
+        background: #ec4899;
+        color: white;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        transform: translateX(-50%);
+        z-index: 10;
+        box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4);
+    }
+
+    .ptr-tag.fast { background: #f59e0b; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4); }
+    .ptr-tag.slow { background: #10b981; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4); }
+
+    .draw-path {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: drawLine 1.5s forwards;
+    }
+
+    @keyframes drawLine {
+        to { stroke-dashoffset: 0; }
     }
 `;
 

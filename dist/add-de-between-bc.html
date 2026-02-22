@@ -8,15 +8,19 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 
 <body>
     <header>
         <nav class="container">
+            <a href="index.html" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
             <div class="logo"><a href="index.html" style="text-decoration: none; color: inherit;"><i
                         class="fas fa-link"></i> LLMaster</a></div>
             <ul class="nav-links">
-                <li><a href="index.html">Back to Home</a></li>
+                <li><a href="index.html" class="active">Challenge Home</a></li>
             </ul>
         </nav>
     </header>
@@ -144,6 +148,7 @@ node2.next = node3;
                 if (result === 'ABDEC') {
                     feedback.innerHTML = '<i class="fas fa-check-circle"></i> Success! Sequence: A → B → D → E → C';
                     feedback.className = 'feedback-msg success';
+                    localStorage.setItem('challenge_1', 'true');
 
                     // Trigger Celebration!
                     confetti({

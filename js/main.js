@@ -84,15 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressFill = document.getElementById('progress-indicator');
     const progressText = document.getElementById('progress-text');
     if (progressFill) {
-        const solvedCount = [
-            localStorage.getItem('ll_progress'),
-            localStorage.getItem('challenge_1'),
-            localStorage.getItem('challenge_2')
-        ].filter(v => v).length;
+        const challengeIds = ['challenge_1', 'challenge_2', 'challenge_3', 'challenge_4', 'challenge_5', 'challenge_6'];
+        const solvedCount = challengeIds.filter(id => localStorage.getItem(id)).length;
 
-        const percent = (solvedCount / 3) * 100;
-        progressFill.style.width = `${percent || 10}%`;
-        if (progressText) progressText.innerText = `${solvedCount}/3 Complete`;
+        const percent = (solvedCount / 6) * 100;
+        progressFill.style.width = `${percent || 5}%`; // Show a sliver if 0
+        if (progressText) progressText.innerText = `${solvedCount}/6 Complete`;
     }
 });
 

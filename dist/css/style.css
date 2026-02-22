@@ -643,3 +643,54 @@ footer {
         display: none;
     }
 }
+
+/* Visualizer Container Base */
+.visualizer-container {
+    min-height: 400px;
+    background: #0d1117;
+    border-radius: 1rem;
+    position: relative;
+    overflow: auto;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+}
+
+#viz-wrapper {
+    min-width: 100%;
+    min-height: 100%;
+}
+
+/* Premium Back Button */
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    background: var(--glass);
+    color: var(--text);
+    text-decoration: none;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: 1px solid var(--border);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    margin-right: 1.5rem;
+}
+
+.btn-back:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary-light);
+    transform: translateX(-5px);
+    box-shadow: 0 0 20px var(--glow-primary);
+}
+
+.btn-back i {
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.btn-back:hover i {
+    transform: translateX(-3px);
+}

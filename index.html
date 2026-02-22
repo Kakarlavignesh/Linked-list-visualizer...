@@ -31,12 +31,13 @@
                     <option value="Pointer Manipulation Challenge">
                     <option value="Add at Front Challenge">
                     <option value="Add at End Challenge">
+                    <option value="Delete at Front Challenge">
+                    <option value="Delete at End Challenge">
                 </datalist>
             </div>
             <ul class="nav-links">
                 <li><a href="index.html" class="active">Home</a></li>
-                <li><a href="visualizer.html" class="active">Visualizer</a></li>
-                <li><a href="playground.html" class="btn-primary">Try Editor</a></li>
+                <li><a href="visualizer.html">Visualizer</a></li>
                 <li><button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button></li>
             </ul>
         </nav>
@@ -139,6 +140,26 @@
                     <p>Add node C to the end of A -> B</p>
                     <a href="add-at-end.html" class="btn btn-filled small">Start Challenge</a>
                 </div>
+                <!-- Delete at Front Challenge #5 -->
+                <div class="challenge-card" data-title="Delete at Front Challenge">
+                    <div class="challenge-header">
+                        <i class="fas fa-minus-circle"></i>
+                        <span>Challenge #5</span>
+                    </div>
+                    <h3>Delete at Front</h3>
+                    <p>Delete node A from A -> B -> C</p>
+                    <a href="delete-front.html" class="btn btn-filled small">Start Challenge</a>
+                </div>
+                <!-- Delete at End Challenge #6 -->
+                <div class="challenge-card" data-title="Delete at End Challenge">
+                    <div class="challenge-header">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>Challenge #6</span>
+                    </div>
+                    <h3>Delete at End</h3>
+                    <p>Delete node C from A -> B -> C</p>
+                    <a href="delete-end.html" class="btn btn-filled small">Start Challenge</a>
+                </div>
             </div>
         </section>
     </main>
@@ -146,11 +167,11 @@
     <footer>
         <div class="container footer-content">
             <div class="progress-info">
-                <span>Personal Progress:</span>
+                <span>Challenges Track:</span>
                 <div class="progress-bar-mini">
-                    <div class="progress-fill" id="progress-indicator" style="width: 20%;"></div>
+                    <div class="progress-fill" id="progress-indicator" style="width: 0%;"></div>
                 </div>
-                <span id="progress-text">1/5 Complete</span>
+                <span id="progress-text">0/6 Complete</span>
             </div>
             <p>&copy; 2024 LLMaster - Premium CS Visuals</p>
         </div>

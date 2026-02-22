@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Challenge: End Insertion | LLMaster</title>
+    <title>Challenge: Delete End | LLMaster</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -28,10 +28,10 @@
     <main class="container page-content">
         <section class="challenge-hero">
             <div class="challenge-info">
-                <span class="badge">CHALLENGE #4</span>
-                <h1>Add at End</h1>
-                <p><strong>Problem:</strong> You have a list <code>A → B</code>. Your task is to add node <code>C</code>
-                    at the <b>end</b> of the list.
+                <span class="badge">CHALLENGE #6</span>
+                <h1>Delete at End</h1>
+                <p><strong>Problem:</strong> You have a list <code>A → B → C</code>. Your task is to <b>delete</b> node
+                    <code>C</code> from the end.
                 </p>
             </div>
         </section>
@@ -45,10 +45,12 @@
                 <textarea id="challenge-editor" class="fira-code" spellcheck="false">
 Node node1 = new Node("A");
 Node node2 = new Node("B");
+Node node3 = new Node("C");
 node1.next = node2;
+node2.next = node3;
 
-// Your task: Create node C and add it to the END
-// Goal sequence: A -> B -> C
+// Your task: Remove C from the list
+// Hint: Make node2 point to null instead of node3
                 </textarea>
                 <div id="feedback" class="feedback-msg"></div>
             </div>
@@ -57,8 +59,8 @@ node1.next = node2;
                 <h3>Visual Live Result</h3>
                 <div id="challenge-viz" class="visualizer-container shadow-glow"></div>
                 <div class="hint">
-                    <i class="fas fa-lightbulb"></i> Hint: Create node3, then set the current tail's next (node2.next)
-                    to node3.
+                    <i class="fas fa-lightbulb"></i> Hint: Locate the second-to-last node and set its next property to
+                    null.
                 </div>
             </div>
         </section>
@@ -68,7 +70,7 @@ node1.next = node2;
             <div class="modal-content animate-pop">
                 <i class="fas fa-trophy trophy-icon"></i>
                 <h2>Challenge Passed!</h2>
-                <p>Congratulations! You've mastered adding to the end.</p>
+                <p>Congratulations! You've mastered deleting from the end.</p>
                 <button onclick="closeModal()" class="btn btn-filled">Keep Exploring</button>
             </div>
         </div>
@@ -105,26 +107,35 @@ node1.next = node2;
                         nodesMap[name] = newNode;
                         allNodes.push(newNode);
                     }
+
+                    // Match variable assignment: node1 = node2
+                    const assignMatch = line.match(/^([a-zA-Z_$][\w_$]*)\s*=\s*([a-zA-Z_$][\w_$]*);?$/);
+                    if (assignMatch) {
+                        const target = assignMatch[1];
+                        const source = assignMatch[2];
+                        if (nodesMap[source]) {
+                            nodesMap[target] = nodesMap[source];
+                        }
+                    }
                 });
 
                 lines.forEach(line => {
                     line = line.trim();
                     if (!line || line.startsWith('//')) return;
-                    const nextMatch = line.match(/([a-zA-Z_$][\w_$]*)\.next\s*=\s*([a-zA-Z_$][\w_$]*);?/);
+                    const nextMatch = line.match(/([a-zA-Z_$][\w_$]*)\.next\s*=\s*([a-zA-Z_$][\w_$]*|null);?/);
                     if (nextMatch) {
                         const from = nextMatch[1];
                         const to = nextMatch[2];
-                        if (nodesMap[from] && nodesMap[to]) {
-                            nodesMap[from].next = nodesMap[to];
+                        if (nodesMap[from]) {
+                            nodesMap[from].next = (to === 'null') ? null : nodesMap[to];
                         }
                     }
                 });
 
-                if (allNodes.length > 0) viz.renderAll(allNodes);
-
-                // Validation: A -> B -> C
-                let current = nodesMap['node1'];
+                // Validation: A -> B
+                let head = nodesMap['node1'] || allNodes.find(n => n.value === 'A');
                 let sequence = [];
+                let current = head;
                 let count = 0;
                 while (current && count < 5) {
                     sequence.push(current.value);
@@ -132,21 +143,26 @@ node1.next = node2;
                     count++;
                 }
 
-                if (sequence.join('') === 'ABC') {
-                    feedback.innerHTML = '<i class="fas fa-check-circle"></i> Success! C added at the end.';
-                    feedback.className = 'feedback-msg success';
-                    localStorage.setItem('challenge_4', 'true');
+                // Determine nodes to render (only reachable from head)
+                let reachable = new Set();
+                let rCurr = head;
+                while (rCurr && !reachable.has(rCurr)) {
+                    reachable.add(rCurr);
+                    rCurr = rCurr.next;
+                }
+                viz.renderAll(Array.from(reachable));
 
-                    // Trigger Celebration!
-                    confetti({
-                        particleCount: 150,
-                        spread: 70,
-                        origin: { y: 0.6 },
-                        colors: ['#6366f1', '#ec4899', '#10b981']
-                    });
+                if (sequence.join('') === 'AB') {
+                    feedback.innerHTML = '<i class="fas fa-check-circle"></i> Success! Node C has been removed.';
+                    feedback.className = 'feedback-msg success';
+                    localStorage.setItem('challenge_6', 'true');
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                     showModal();
+                } else if (sequence.join('') === 'ABC') {
+                    feedback.innerHTML = '<i class="fas fa-info-circle"></i> Node C is still at the end. Cut the link!';
+                    feedback.className = 'feedback-msg error';
                 } else {
-                    feedback.innerHTML = '<i class="fas fa-times-circle"></i> Failed. Sequence: ' + (sequence.join(' → ') || 'Empty');
+                    feedback.innerHTML = '<i class="fas fa-times-circle"></i> Failed. Sequence: ' + (sequence.join(' → ') || 'Empty or Incorrect');
                     feedback.className = 'feedback-msg error';
                 }
             } catch (err) {
@@ -155,13 +171,8 @@ node1.next = node2;
             }
         }
 
-        function showModal() {
-            document.getElementById('success-modal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('success-modal').style.display = 'none';
-        }
+        function showModal() { document.getElementById('success-modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('success-modal').style.display = 'none'; }
         checkSolution();
     </script>
 
@@ -175,7 +186,7 @@ node1.next = node2;
         }
 
         .badge {
-            background: var(--accent);
+            background: #ef4444;
             color: white;
             padding: 0.2rem 1rem;
             border-radius: 9999px;
@@ -222,8 +233,7 @@ node1.next = node2;
             outline: none;
             font-family: 'Fira Code', monospace;
             line-height: 1.6;
-            resize: both;
-            overflow: auto;
+            resize: none;
         }
 
         .feedback-msg {
@@ -234,7 +244,7 @@ node1.next = node2;
 
         .feedback-msg.success {
             background: rgba(16, 185, 129, 0.2);
-            color: var(--accent);
+            color: #10b981;
         }
 
         .feedback-msg.error {
@@ -256,7 +266,6 @@ node1.next = node2;
             box-shadow: 0 0 40px rgba(16, 185, 129, 0.1);
         }
 
-        /* Success Modal Styles */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -285,21 +294,15 @@ node1.next = node2;
             font-size: 4rem;
             color: #fbbf24;
             margin-bottom: 1.5rem;
-            filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.5));
         }
 
         .modal-content h2 {
             font-size: 2rem;
             margin-bottom: 1rem;
-            background: linear-gradient(to right, var(--primary-light), var(--secondary));
+            background: linear-gradient(to right, #6366f1, #ec4899);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-        }
-
-        .modal-content p {
-            color: var(--text-muted);
-            margin-bottom: 2rem;
         }
 
         .animate-pop {
