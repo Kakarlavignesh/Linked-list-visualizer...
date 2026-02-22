@@ -1,0 +1,12 @@
+{
+  "name": "linked-list-visualizer",
+  "version": "1.0.0",
+  "description": "Linked List Visualizer Project",
+  "main": "index.html",
+  "scripts": {
+    "build": "mkdir -p dist && cp -r css js *.html README.md netlify.toml dist/"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
