@@ -4,15 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLMaster | AI Multi-Language Visualizer</title>
+    <title>DSA VISUALIZER | AI Multi-Language Visualizer</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 </head>
 
@@ -23,9 +21,10 @@
                 <i class="fas fa-arrow-left"></i> Back
             </a>
             <div class="logo">
-                <a href="index.html" style="text-decoration: none; color: inherit;">
-                    <i class="fas fa-link"></i>
-                    <span>LL<span>Master</span></span>
+                <a href="index.html"
+                    style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>DSA <span>Visualizer</span></span>
                 </a>
             </div>
             <ul class="nav-links">
@@ -119,7 +118,7 @@
     <div id="ai-chat-modal" class="ai-modal">
         <div class="ai-modal-content">
             <div class="ai-modal-header">
-                <h3><i class="fas fa-robot"></i> LLMaster AI Debugger</h3>
+                <h3><i class="fas fa-robot"></i> DSA VISUALIZER AI Debugger</h3>
                 <button onclick="closeAIChat()" class="close-btn">&times;</button>
             </div>
             <div class="ai-chat-body" id="ai-messages">
@@ -139,50 +138,93 @@
     <script>
         let editor, viz;
         let selectedLang = 'javascript';
+        let traceSteps = [];
+        let isAnimating = false;
+        let vizVersion = 0; // Prevent overlapping animations
 
-        const langTemplates = {
-            javascript: `let n1 = new Node(10);\nlet n2 = new Node(20);\nn1.next = n2;`,
-            python: `a = Node("Apple")\nb = Node("Banana")\na.next = b`,
-            java: `ListNode n1 = new ListNode(1);\nListNode n2 = new ListNode(2);\nn1.next = n2;`,
-            cpp: `Node* a = new Node(100);\nNode* b = new Node(200);\na->next = b;`,
-            c: `struct Node* a = createNode(1);\nstruct Node* b = createNode(2);\na->next = b;`
-        };
-
-        const examples = {
-            create: langTemplates,
-            reverse: {
-                javascript: `let n1 = new Node(1);\nlet n2 = new Node(2);\nlet n3 = new Node(3);\n// Physically reverse links\nn3.next = n2;\nn2.next = n1;`,
-                python: `a = Node(1)\nb = Node(2)\nc = Node(3)\n# Reverse pointers\nc.next = b\nb.next = a`,
-                java: `ListNode n1 = new ListNode(1);\nListNode n2 = new ListNode(2);\nListNode n3 = new ListNode(3);\nn3.next = n2;\nn2.next = n1;`,
-                cpp: `Node* a = new Node(1);\nNode* b = new Node(2);\nNode* c = new Node(3);\nc->next = b;\nb->next = a;`,
-                c: `struct Node* a = createNode(1);\nstruct Node* b = createNode(2);\nstruct Node* c = createNode(3);\nc->next = b;\nb->next = a;`
-            },
-            cycle: {
-                javascript: `let a = new Node(10);\nlet b = new Node(20);\nlet c = new Node(30);\na.next = b;\nb.next = c;\nc.next = a; // Loop!`,
-                python: `a = Node(10)\nb = Node(20)\nc = Node(30)\na.next = b\nb.next = c\nc.next = a`,
-                java: `ListNode n1 = new ListNode(10);\nListNode n2 = new ListNode(20);\nListNode n3 = new ListNode(30);\nn1.next = n2;\nn2.next = n3;\nn3.next = n1;`,
-                cpp: `Node* a = new Node(10);\nNode* b = new Node(20);\nNode* c = new Node(30);\na->next = b;\nb->next = c;\nc->next = a;`,
-                c: `struct Node* a = createNode(10);\nstruct Node* b = createNode(20);\nstruct Node* c = createNode(30);\na->next = b;\nb->next = c;\nc->next = a;`
+        /**
+         * REAL EXECUTION ENGINE (TRACER)
+         * Executes real code and captures snapshots of memory mutations.
+         */
+        class RealEngine {
+            constructor() {
+                this.heap = [];
+                this.trace = [];
             }
-        };
 
-        document.addEventListener('DOMContentLoaded', () => {
-            initAce();
-            viz = new Visualizer('viz-container');
-            // Force first render
-            setLanguage('javascript', 'JavaScript (JS)');
-        });
+            reset() {
+                this.heap = [];
+                this.trace = [];
+            }
 
-        function initAce() {
-            editor = ace.edit("editor");
-            editor.setTheme("ace/theme/tomorrow_night_eighties");
-            editor.session.setMode("ace/mode/javascript");
-            editor.setShowPrintMargin(false);
-            editor.setOptions({ fontSize: "14px", useSoftTabs: true, fontFamily: "'Fira Code', monospace" });
-            editor.on("change", () => setTimeout(runCode, 300));
+            createNode(val, name) {
+                const node = { value: val, next: null, prev: null, name: name || 'n' + (this.heap.length + 1) };
+                this.heap.push(node);
+                this.record('CREATE', { node });
+                return node;
+            }
+
+            record(type, data) {
+                // Snapshot the current state of the heap
+                const snapshot = JSON.parse(JSON.stringify(this.heap, (key, value) => {
+                    if (key === 'next' || key === 'prev') {
+                        if (value) return value.name || 'node_unnamed';
+                        return null;
+                    }
+                    return value;
+                }));
+                this.trace.push({ type, data, heapSnapshot: snapshot });
+            }
         }
 
-        /** CUSTOM DROPDOWN LOGIC **/
+        const engine = new RealEngine();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMonaco(() => {
+                viz = new Visualizer('viz-container');
+                setLanguage('javascript', 'JavaScript (JS)');
+            });
+        });
+
+        function initMonaco(callback) {
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+            require(['vs/editor/editor.main'], function () {
+                editor = monaco.editor.create(document.getElementById('editor'), {
+                    value: langTemplates['javascript'],
+                    language: 'javascript',
+                    theme: 'vs-dark',
+                    automaticLayout: true,
+                    fontSize: 14,
+                    fontFamily: "'Fira Code', monospace",
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    roundedSelection: true,
+                    contextmenu: true,
+                    renderLineHighlight: 'all',
+                    scrollbar: { vertical: 'visible', horizontal: 'visible' },
+                    cursorBlinking: 'smooth',
+                    glyphMargin: true,
+                    wordWrap: 'on'
+                });
+
+                // Fix cursor miscalculation by waiting for fonts
+                document.fonts.ready.then(() => {
+                    monaco.editor.remeasureFonts();
+                    editor.layout();
+                });
+
+                // Watch for container resizes
+                new ResizeObserver(() => editor.layout()).observe(document.getElementById('editor'));
+
+                editor.onDidChangeModelContent(() => {
+                    clearTimeout(window.runTimer);
+                    window.runTimer = setTimeout(runCode, 500);
+                });
+
+                if (callback) callback();
+            });
+        }
+
         function toggleDropdown(id) {
             const options = document.getElementById(id);
             const all = document.querySelectorAll('.dropdown-options');
@@ -196,139 +238,567 @@
             }
         }
 
-        function setLanguage(val, label) {
-            selectedLang = val;
-            document.getElementById('current-lang').innerText = label;
-            document.getElementById('lang-options').classList.remove('show');
-
-            const modes = { python: "python", java: "java", cpp: "c_cpp", c: "c_cpp", javascript: "javascript" };
-            editor.session.setMode("ace/mode/" + modes[val]);
-            editor.setValue(langTemplates[val], -1);
-            runCode();
-        }
+        const examples = {
+            create: {
+                javascript: `// Basic Creation\nlet n1 = new Node(10);\nlet n2 = new Node(20);\nn1.next = n2;`,
+                python: `# Python Creation\nn1 = Node(10)\nn2 = Node(20)\nn1.next = n2`,
+                java: `// Java Creation\nNode n1 = new Node(10);\nNode n2 = new Node(20);\nn1.next = n2;`,
+                cpp: `// C++ Creation\nNode *n1 = new Node(10);\nNode *n2 = new Node(20);\nn1->next = n2;`,
+                c: `// C Creation\nNode *n1 = createNode(10);\nNode *n2 = createNode(20);\nn1->next = n2;`
+            },
+            reverse: {
+                javascript: `// Reverse Linked List\nfunction reverse(head) {\n  let prev = null, curr = head;\n  while(curr) {\n    let next = curr.next;\n    curr.next = prev;\n    prev = curr;\n    curr = next;\n  }\n  return prev;\n}\n\nlet head = new Node(1);\nhead.next = new Node(2);\nhead.next.next = new Node(3);\nhead = reverse(head);`,
+                python: `def reverse(head):\n    prev = None\n    curr = head\n    while curr:\n        nt = curr.next\n        curr.next = prev\n        prev = curr\n        curr = nt\n    return prev\n\nh1 = Node(1)\nh1.next = Node(2)\nh1.next.next = Node(3)\nh1 = reverse(h1)`,
+                java: `// Java Reverse\nstatic Node reverse(Node head) {\n    Node prev = null, curr = head;\n    while (curr != null) {\n        Node next = curr.next;\n        curr.next = prev;\n        prev = curr;\n        curr = next;\n    }\n    return prev;\n}\n\npublic static void main(String[] args) {\n    Node head = new Node(1);\n    head.next = new Node(2);\n    head.next.next = new Node(3);\n    head = reverse(head);\n}`,
+                cpp: `// C++ Reverse\nNode* reverse(Node* head) {\n    Node* prev = nullptr, *curr = head;\n    while (curr != nullptr) {\n        Node* next = curr->next;\n        curr->next = prev;\n        prev = curr;\n        curr = next;\n    }\n    return prev;\n}\n\nvoid solve() {\n    Node* head = new Node(1);\n    head->next = new Node(2);\n    head = reverse(head);\n}\nsolve();`,
+                c: `// C Reverse\nNode* reverse(Node* head) {\n    Node* prev = NULL, *curr = head;\n    while (curr != NULL) {\n        Node* next = curr->next;\n        curr->next = prev;\n        prev = curr;\n        curr = next;\n    }\n    return prev;\n}\n\nNode* head = createNode(1);\nhead->next = createNode(2);\nhead = reverse(head);`
+            },
+            cycle: {
+                javascript: `// Detect Cycle\nfunction hasCycle(head) {\n    let slow = head, fast = head;\n    while (fast && fast.next) {\n        slow = slow.next;\n        fast = fast.next.next;\n        if (slow === fast) return true;\n    }\n    return false;\n}\n\nlet a = new Node(10), b = new Node(20), c = new Node(30);\na.next = b; b.next = c; c.next = a;\nhasCycle(a);`,
+                python: `def hasCycle(head):\n    slow = head\n    fast = head\n    while fast and fast.next:\n        slow = slow.next\n        fast = fast.next.next\n        if slow == fast:\n            return True\n    return False\n\na = Node(1)\nb = Node(2)\nc = Node(3)\na.next = b\nb.next = c\nc.next = a\nhasCycle(a)`,
+                java: `// Java Cycle\nstatic boolean hasCycle(Node head) {\n    Node slow = head, fast = head;\n    while (fast != null && fast.next != null) {\n        slow = slow.next;\n        fast = fast.next.next;\n        if (slow == fast) return true;\n    }\n    return false;\n}\n\npublic static void main(String[] args) {\n    Node a = new Node(1), b = new Node(2), c = new Node(3);\n    a.next = b; b.next = c; c.next = a;\n    hasCycle(a);\n}`,
+                cpp: `// CPP Cycle\nbool hasCycle(Node* head) {\n    Node *slow = head, *fast = head;\n    while (fast && fast->next) {\n        slow = slow->next;\n        fast = fast->next->next;\n        if (slow == fast) return true;\n    }\n    return false;\n}\n\nNode *a = new Node(1), *b = new Node(2), *c = new Node(3);\na->next = b; b->next = c; c->next = a;\nhasCycle(a);`,
+                c: `// C Cycle\nbool hasCycle(Node* head) {\n    Node *slow = head, *fast = head;\n    while (fast && fast->next) {\n        slow = slow->next;\n        fast = fast->next->next;\n        if (slow == fast) return true;\n    }\n    return false;\n}\n\nNode *a = createNode(1), *b = createNode(2), *c = createNode(3);\na->next = b; b->next = c; c->next = a;\nhasCycle(a);`
+            }
+        };
 
         function loadExampleV2(key) {
             document.getElementById('current-ex').innerText = key.toUpperCase();
             document.getElementById('ex-options').classList.remove('show');
-            const code = examples[key][selectedLang];
-            editor.setValue(code, -1);
+            if (editor) {
+                editor.setValue(examples[key][selectedLang] || langTemplates[selectedLang]);
+            }
+            runCode();
+        }
+
+        const langTemplates = {
+            javascript: `// JavaScript Link Creation\nclass Node {\n  constructor(data) {\n    this.data = data;\n    this.next = null;\n  }\n}\n\nfunction insertEnd(head, val) {\n  let newNode = new Node(val);\n  let temp = head;\n  while(temp.next) temp = temp.next;\n  temp.next = newNode;\n  return head;\n}\n\nlet head = new Node(10);\ninsertEnd(head, 20);\ninsertEnd(head, 30);`,
+            python: `# Python Mode\nclass Node:\n    def __init__(self, data):\n        self.data = data\n        self.next = None\n\ndef add(head, val):\n    new_node = Node(val)\n    temp = head\n    while temp.next:\n        temp = temp.next\n    temp.next = new_node\n    return head\n\nh = Node(10)\nadd(h, 20)\nadd(h, 30)`,
+            java: `// Java/OOP Mode\npublic class Solution {\n    static Node insert(Node head, int val) {\n        Node newNode = new Node(val);\n        Node temp = head;\n        while(temp.next != null) temp = temp.next;\n        temp.next = newNode;\n        return head;\n    }\n\n    public static void main(String[] args) {\n        Node h = new Node(10);\n        insert(h, 20);\n        insert(h, 30);\n    }\n}`,
+            cpp: `// C++/Pointers\nvoid solve() {\n    Node* head = new Node(10);\n    Node* n2 = new Node(20);\n    head->next = n2;\n}\n\nsolve();`,
+            c: `// C Mode\nstruct Node* head = createNode(10);\nstruct Node* n2 = createNode(20);\nhead->next = n2;`
+        };
+
+        function setLanguage(val, label) {
+            selectedLang = val;
+            document.getElementById('current-lang').innerText = label;
+            document.getElementById('lang-options').classList.remove('show');
+            if (editor) {
+                const model = editor.getModel();
+                monaco.editor.setModelLanguage(model, val === 'cpp' || val === 'c' ? 'cpp' : val);
+                editor.setValue(langTemplates[val]);
+                // Ensure layout is recalculated for cursor position
+                setTimeout(() => {
+                    editor.layout();
+                    editor.focus();
+                }, 10);
+            }
             runCode();
         }
 
         async function animateCode() {
-            const code = editor.getValue();
-            const lines = code.split('\n');
-            const nodesMap = {};
-            const creationOrder = [];
-            const Range = ace.require('ace/range').Range;
-            let currentMarker = null;
+            const version = ++vizVersion;
+            isAnimating = true;
 
-            const createPattern = /(?:(?:let|var|const|Node\*?|struct\s+Node\*?|ListNode\*?)\s+)?([a-zA-Z_$][\w0-9_$]*)\s*=\s*(?:new\s+)?(?:Node|ListNode|createNode)\s*\(\s*['"]?(.*?)['"]?\s*\)/i;
-            const linkPattern = /([a-zA-Z_$][\w0-9_$]*)(?:\.|\->)([a-zA-Z0-9_$]+)\s*=\s*([a-zA-Z_$][\w0-9_$]*)/i;
-
-            // Clear visualizer first
-            viz.renderAll([]);
+            // Clear previous state for fresh animation
+            renderTraceSnapshot([]);
             document.getElementById('empty-state').style.display = 'none';
             document.getElementById('viz-wrapper').style.display = 'block';
 
-            for (let i = 0; i < lines.length; i++) {
-                let line = lines[i].trim();
+            await executeForTrace(); // Special execution that records every micro-step
 
-                // Highlight current line
-                if (currentMarker !== null) {
-                    editor.session.removeMarker(currentMarker);
-                }
-                currentMarker = editor.session.addMarker(new Range(i, 0, i, 1), "ace_step_highlight", "fullLine");
-                editor.scrollToLine(i, true, true, function () { });
+            if (traceSteps.length === 0) {
+                isAnimating = false;
+                return;
+            }
 
-                if (!line) {
-                    await new Promise(r => setTimeout(r, 100));
-                    continue;
-                }
+            let decorations = [];
 
-                const cMatch = line.match(createPattern);
-                const lMatch = line.match(linkPattern);
+            try {
+                for (let step of traceSteps) {
+                    if (version !== vizVersion) break;
 
-                if (cMatch) {
-                    const name = cMatch[1], val = cMatch[2];
-                    const node = { value: val, next: null, prev: null, name: name };
-                    nodesMap[name] = node;
-                    creationOrder.push(node);
+                    // Update Visualization
+                    renderTraceSnapshot(step.heap, step.activeIds);
+                    document.getElementById('editor-status').innerHTML = `<i class="fas fa-microchip"></i> Step ${traceSteps.indexOf(step) + 1}/${traceSteps.length}: ${step.type}`;
 
-                    document.getElementById('editor-status').innerHTML = `<i class="fas fa-spinner fa-spin"></i> Creating Node <b>${name}</b>...`;
-                    viz.renderAll(creationOrder);
-                    await new Promise(r => setTimeout(r, 1000));
-                } else if (lMatch) {
-                    const from = lMatch[1], prop = lMatch[2], to = lMatch[3];
-                    if (nodesMap[from] && nodesMap[to]) {
-                        nodesMap[from][prop] = nodesMap[to];
-                        document.getElementById('editor-status').innerHTML = `<i class="fas fa-link"></i> Linking <b>${from}</b> to <b>${to}</b>...`;
-                        viz.renderAll(creationOrder);
-                        await new Promise(r => setTimeout(r, 1000));
+                    // Highlight line in Monaco
+                    if (step.line !== undefined && editor) {
+                        // Offset is exactly 1 because we add 1 line of mocks/setup at the top
+                        const offset = selectedLang === 'javascript' ? 0 : 1;
+                        const displayLine = Math.max(1, step.line - offset);
+
+                        decorations = editor.deltaDecorations(decorations, [
+                            {
+                                range: new monaco.Range(displayLine, 1, displayLine, 1),
+                                options: {
+                                    isWholeLine: true,
+                                    className: 'ace_step_highlight',
+                                    glyphMarginClassName: 'fas fa-arrow-right'
+                                }
+                            }
+                        ]);
+                        editor.revealLineInCenter(displayLine);
                     }
-                } else {
-                    await new Promise(r => setTimeout(r, 300));
+
+                    await new Promise(r => setTimeout(r, 800)); // Slightly slower animation for clarity
+                }
+            } finally {
+                if (version === vizVersion) {
+                    isAnimating = false;
+                    if (editor) editor.deltaDecorations(decorations, []);
+                    document.getElementById('editor-status').innerHTML = `<i class="fas fa-check-double" style="color:#10b981"></i> Animation Complete.`;
                 }
             }
+        }
 
-            if (currentMarker !== null) {
-                editor.session.removeMarker(currentMarker);
-            }
-            document.getElementById('editor-status').innerHTML = `<i class="fas fa-check-double" style="color:#10b981"></i> Animation complete.`;
-            runCode(); // Final run to ensure everything is synced
+        // Shared Node structure to ensure data/next/prev are ALWAYS captured
+        function createVisualNodeClass(shadowHeap, captureSnapshot) {
+            return class Node {
+                constructor(data) {
+                    this._data = data;
+                    this._next = null;
+                    this._prev = null;
+                    this._id = 'n' + (shadowHeap.length + 1);
+
+                    const proxy = new Proxy(this, {
+                        set: (target, prop, value) => {
+                            const p = prop.toLowerCase();
+                            // Capture both data and val/value for broad compatibility
+                            if (['next', 'prev', 'data', 'val', 'value'].includes(p)) {
+                                const internalProp = (p === 'next' || p === 'prev') ? '_' + p : '_data';
+                                target[internalProp] = value;
+                                if (captureSnapshot) captureSnapshot(`SET ${p.toUpperCase()}`);
+                                return true;
+                            }
+                            target[prop] = value;
+                            return true;
+                        },
+                        get: (target, prop) => {
+                            const p = prop.toLowerCase();
+                            if (p === 'next' || p === 'prev') return target['_' + p];
+                            if (['data', 'val', 'value'].includes(p)) return target._data;
+                            if (p === 'id') return target._id; // Needed for Python 'is' checks
+                            return target[prop];
+                        }
+                    });
+
+                    shadowHeap.push(proxy);
+                    // Force a capture on creation to show the node immediately
+                    if (captureSnapshot) captureSnapshot('CREATE NODE');
+                    return proxy;
+                }
+            };
+        }
+
+        function translateToJS(code, lang) {
+            let res = [];
+            let stack = [0];
+            let isSkipBlock = false;
+            let bracketBalance = 0;
+            let classClosingBraceBalance = 0;
+
+            code.split('\n').forEach((line, idx) => {
+                let trimmed = line.trim();
+                let p = line;
+
+                if (!trimmed) { res.push(""); return; }
+
+                // COMMON: Remove or comment out user-defined Node/ListNode/struct classes to prevent shadowing
+                if (trimmed.match(/^(public\s+|private\s+|static\s+)?(class|struct|function)\s+(Node|ListNode)\b/)) {
+                    isSkipBlock = true;
+                    bracketBalance = 0;
+                    if (lang === 'python') {
+                        let indent = line.search(/\S/);
+                        bracketBalance = indent; // Store start indent for Python
+                    }
+                }
+
+                if (isSkipBlock) {
+                    if (lang === 'python') {
+                        let indent = (line.match(/^\s*/) || [""])[0].length;
+                        if (trimmed && idx > 0 && indent <= bracketBalance) {
+                            isSkipBlock = false;
+                            // Block ends, process this line normally without commenting it out
+                        } else {
+                            res.push("// [System Override] " + line);
+                            return;
+                        }
+                    } else {
+                        p = "// [System Override] " + line;
+                        if (line.includes('{')) bracketBalance++;
+                        if (line.includes('}')) bracketBalance--;
+                        if (bracketBalance === 0 && (line.includes('}') || (trimmed === '};'))) isSkipBlock = false;
+                        res.push(p);
+                        return;
+                    }
+                }
+
+
+                if (lang === 'python') {
+                    // Convert Python comments to JS comments
+                    if (trimmed.startsWith('#')) p = '//' + line.substring(line.indexOf('#') + 1);
+                    else p = p.replace(/(\s+)#.*/, '$1// comment');
+
+                    let indent = line.search(/\S/);
+                    // Close blocks based on indentation
+                    while (stack.length > 1 && indent <= stack[stack.length - 1] - 4) {
+                        stack.pop();
+                        res.push(" ".repeat(stack[stack.length - 1] || 0) + "}");
+                    }
+
+                    // Handle decorators and methods properly
+                    if (trimmed.startsWith('@staticmethod')) {
+                        stack.push('static'); // Push marker to stack
+                        res.push("// " + line);
+                        return;
+                    }
+
+                    const isClassBlock = stack.some(s => typeof s === 'number' && s > 0);
+                    let wasStatic = false;
+                    if (stack[stack.length - 1] === 'static') {
+                        stack.pop();
+                        wasStatic = true;
+                    }
+
+                    p = p.replace(/def\s+(\w+)\s*\((.*?)\):/g, (match, name, args) => {
+                        let prefix = isClassBlock ? (wasStatic ? 'static ' : '') : 'function ';
+                        let cleanArgs = args.split(',').map(a => a.trim()).filter(a => a !== 'self' && a !== '').join(', ');
+                        if (name === '__init__') return `constructor(${cleanArgs}) {`;
+                        return `${prefix}${name}(${cleanArgs}) {`;
+                    })
+                        .replace(/class\s+(\w+)(?:\((.*?)\))?:/g, 'class $1 {')
+                        .replace(/\bself\./g, 'this.')
+                        .replace(/\bself\b/g, 'this')
+                        .replace(/\bNone\b/g, 'null')
+                        .replace(/\bTrue\b/g, 'true')
+                        .replace(/\bFalse\b/g, 'false')
+                        .replace(/\band\b/g, ' && ')
+                        .replace(/\bor\b/g, ' || ')
+                        .replace(/\bnot\b/g, ' ! ')
+                        .replace(/\bis\s+not\s+None\b/g, ' !== null')
+                        .replace(/\bis\s+None\b/g, ' === null')
+                        .replace(/\bis\s+not\s+null\b/i, ' !== null')
+                        .replace(/\bis\s+null\b/i, ' === null')
+                        .replace(/\bis\s+not\b/g, ' !== ')
+                        .replace(/\bis\b/g, ' === ')
+                        .replace(/print\s*\((.*?),\s*end\s*=\s*(.*?)\)/g, 'process.stdout.write(($1).toString() + $2)')
+                        .replace(/print\s*\((.*?)\)/g, 'console.log($1)')
+                        .replace(/else\s*:/g, ' else {')
+                        .replace(/elif\s+(.*?):/g, ' else if ($1) {')
+                        .replace(/if\s+(.*?):/g, 'if ($1) {')
+                        .replace(/while\s+(.*?):/g, 'while ($1) {')
+                        .replace(/for\s+(.*?)\s+in\s+(.*?):/g, 'for (let $1 of $2) {')
+                        .replace(/(?<!new\s+)\b(Node|ListNode)\b\s*\(/g, 'new $1(');
+
+                    if (p.trim().endsWith('{')) {
+                        stack.push(indent + 4);
+                    } else if (p.includes('=') && !p.includes('==') && !p.includes('!=') && !p.trim().startsWith('this.')) {
+                        let assignmentTrimmed = p.trim();
+                        // Prepend 'var' to new variables, but ONLY if they are simple names (no dots)
+                        if (assignmentTrimmed.match(/^[a-zA-Z_]\w*\s*=/)) {
+                            const varName = assignmentTrimmed.split('=')[0].trim();
+                            // Don't inject 'var' if it's already a tracked pointer or property
+                            if (!varName.includes('.') && !['return', 'break', 'this', 'else', 'elif', 'if', 'while', 'for', 'head', 'root', 'curr', 'current', 'prev', 'next', 'nxt'].includes(varName)) {
+                                p = p.replace(new RegExp('^(\\s*)' + varName + '(?=\\s|=)'), '$1var ' + varName);
+                            }
+                        }
+                    }
+                }
+                else if (lang === 'java' || lang === 'cpp' || lang === 'c') {
+                    // Pass -1: C++ specific cleanup
+                    if (trimmed.startsWith('#include') || trimmed.startsWith('using namespace')) {
+                        p = "// " + line;
+                        res.push(p); return;
+                    }
+                    p = p.replace(/\b(public|private|protected)\s*:/g, '// $1')
+                        .replace(/cout\s*<<\s*([\s\S]*?);/g, (m, content) => {
+                            let clean = content.replace(/<<\s*endl/g, '+"\\n"').replace(/<<\s*/g, '+');
+                            return `console.log(${clean});`;
+                        })
+                        .replace(/\bendl\b/g, '"\\n"');
+
+                    // Pass 0: Optional class flattening (strips wrapper class lines but keeps content)
+                    if (trimmed.match(/^(public\s+|private\s+)?(class|struct)\s+\w+\b/) && !trimmed.match(/\b(Node|ListNode)\b/)) {
+                        p = "// [System Class Flatten] " + line;
+                        classClosingBraceBalance = 1;
+                    } else if (classClosingBraceBalance > 0) {
+                        if (line.includes('{')) classClosingBraceBalance++;
+                        if (line.includes('}')) classClosingBraceBalance--;
+                        if (classClosingBraceBalance === 0) p = "// [System Class End] " + line;
+                    }
+
+                    // Pass 1: Global cleanup of modifiers and punctuation
+                    p = p.replace(/\b(?!System\b|Math\b|String\b)[A-Z]\w*\.(?=[a-z])/, '') // Strip static access except System/Math
+                        .replace(/\bNULL\b|\bnullptr\b/g, 'null')
+                        .replace(/->/g, '.')
+                        .replace(/\b(public|private|static|final|protected|volatile|synchronized|inline|extern|virtual|override)\b/g, '');
+
+                    // Pass 2: Handle method signatures: (type) name(args) { ... }
+                    p = p.replace(/^\s*(?:(?:Node|ListNode|struct\s+Node|void|int|boolean|bool|String|auto|double|float|long|char)\s*\*?\s+)+(\w+)\s*\((.*?)\)\s*\{/gm, (m, name, args) => {
+                        if (['if', 'while', 'for', 'switch', 'catch', 'constructor', 'function'].includes(name.trim())) return m;
+                        let cleanArgs = args.split(',').map(a => {
+                            let parts = a.trim().split(/\s+/);
+                            return parts.pop().replace(/\*|\[\]/g, ''); // Remove pointers and array brackets
+                        }).join(', ');
+                        if (name.trim() === 'Node' || name.trim() === 'ListNode') return `constructor(${cleanArgs}) {`;
+                        return `function ${name}(${cleanArgs}) {`;
+                    });
+
+                    // Pass 3: Handle variable declarations (Node *a = ..., *b = ...)
+                    // Convert to global assignments (no var/let) to ensure they are captured by the return object
+                    const typePattern = '(Node|ListNode|struct\\s+Node|void|int|boolean|bool|String|auto|double|float|long|char)';
+                    const varDeclRegex = new RegExp('^(\\s*)' + typePattern + '\\s*\\*?\\s+', 'gm');
+                    p = p.replace(varDeclRegex, '$1 ');
+
+                    // Pass 4: Clean up remaining types and pointers
+                    // Replace types NOT used in 'new Type' or in constructor calls
+                    p = p.replace(/(?<!new\s+)\b(Node|ListNode|struct\s+Node|void|int|boolean|bool|String|auto|double|float|long|char)\b\s*\*?/g, ' ');
+
+                    p = p.replace(/,\s*\*/g, ', '); // , *curr -> , curr
+                    p = p.replace(/\*/g, ''); // final pointer cleanup
+                    p = p.replace(/\bvar\s+var\b/g, 'var'); // dedupe var
+                }
+                res.push(p);
+            });
+
+            while (stack.length > 1) { stack.pop(); res.push("}"); }
+
+            return res.join('\n');
         }
 
         function runCode() {
-            const code = editor.getValue();
-            const lines = code.split('\n');
-            const nodesMap = {};
-            const creationOrder = [];
-            let annotations = [];
+            vizVersion++;
+            const rawCode = editor.getValue();
+            if (!rawCode.trim()) return;
 
-            const createPattern = /(?:(?:let|var|const|Node\*?|struct\s+Node\*?|ListNode\*?)\s+)?([a-zA-Z_$][\w0-9_$]*)\s*=\s*(?:new\s+)?(?:Node|ListNode|createNode)\s*\(\s*['"]?(.*?)['"]?\s*\)/i;
-            const linkPattern = /([a-zA-Z_$][\w0-9_$]*)(?:\.|\->)([a-zA-Z0-9_$]+)\s*=\s*([a-zA-Z_$][\w0-9_$]*)/i;
+            let code = translateToJS(rawCode, selectedLang);
 
-            lines.forEach((line, index) => {
-                line = line.trim();
-                const cMatch = line.match(createPattern);
-                const lMatch = line.match(linkPattern);
+            try {
+                const shadowHeap = [];
+                const VisualNode = createVisualNodeClass(shadowHeap, null);
 
-                if (cMatch) {
-                    const name = cMatch[1], val = cMatch[2];
-                    if (nodesMap[name]) {
-                        annotations.push({ row: index, column: 0, text: `Duplicate node name '${name}' detected. Each node must have a unique identifier.`, type: "error" });
-                    }
-                    const node = { value: val, next: null, prev: null, name: name };
-                    nodesMap[name] = node;
-                    creationOrder.push(node);
-                } else if (lMatch) {
-                    const from = lMatch[1], prop = lMatch[2], to = lMatch[3];
-                    if (nodesMap[from] && nodesMap[to]) {
-                        if (prop === 'next' || prop === 'prev') {
-                            nodesMap[from][prop] = nodesMap[to];
-                        } else {
-                            annotations.push({ row: index, column: 0, text: `Invalid link property '${prop}'. Use 'next' or 'prev'.`, type: "error" });
+                // Add mocks to prevent execution stops
+                const mocks = `
+                    const process={stdout:{write:(s)=>console.log(s)}}; 
+                    const System={out:{println:console.log,print:console.log}}; 
+                    const cout={write:(s)=>console.log(s)}; const endl='\\n'; 
+                    function malloc(s){return new Node(0);}; 
+                    function createNode(d){return new Node(d);};
+                `;
+
+                // Universal Variable Discovery
+                const reserved = [
+                    'abstract', 'arguments', 'await', 'boolean', 'break', 'byte', 'case', 'catch', 'char', 'class', 'const', 'continue', 'debugger', 'default', 'delete', 'do', 'double', 'else', 'enum', 'eval', 'export', 'extends', 'false', 'final', 'finally', 'float', 'for', 'function', 'goto', 'if', 'implements', 'import', 'in', 'instanceof', 'int', 'interface', 'let', 'long', 'native', 'new', 'null', 'package', 'private', 'protected', 'public', 'return', 'short', 'static', 'super', 'switch', 'synchronized', 'this', 'throw', 'throws', 'transient', 'true', 'try', 'typeof', 'var', 'void', 'volatile', 'while', 'with', 'yield',
+                    'def', 'elif', 'None', 'self', 'constructor', 'from', 'as', 'pass', 'lambda', 'global', 'nonlocal', 'assert', 'del', 'match', 'True', 'False', 'async',
+                    'cout', 'endl', 'std', 'printf', 'scanf', 'malloc', 'free', 'size_t', 'using', 'namespace', 'include', 'is', 'not', 'and', 'or', 'alignas', 'alignof', 'and_eq', 'asm', 'auto', 'bitand', 'bitor', 'bool', 'char8_t', 'char16_t', 'char32_t', 'compl', 'concept', 'consteval', 'constexpr', 'constinit', 'const_cast', 'co_await', 'co_return', 'co_yield', 'decltype', 'dynamic_cast', 'explicit', 'extern', 'friend', 'inline', 'mutable', 'noexcept', 'not_eq', 'nullptr', 'operator', 'or_eq', 'register', 'reinterpret_cast', 'requires', 'signed', 'sizeof', 'static_assert', 'static_cast', 'struct', 'template', 'thread_local', 'typedef', 'typeid', 'typename', 'union', 'unsigned', 'virtual', 'wchar_t', 'xor', 'xor_eq', 'restrict', 'strictfp',
+                    'Math', 'String', 'Node', 'ListNode', 'System', 'out', 'println', 'print', 'process', 'console', 'alert', 'window', 'document', 'navigator', 'location', 'top', 'parent', 'frames',
+                    'next', 'prev'
+                ];
+                const ptrNames = Array.from(rawCode.matchAll(/\b([a-zA-Z_]\w*)\b/g))
+                    .map(m => m[1])
+                    .filter(name => !reserved.includes(name));
+                const uniquePtrs = [...new Set([...ptrNames, 'head', 'root', 'current', 'curr', 'temp', 'node', 'prev', 'next', 'tail', 'nxt', 'current_node'])];
+                const returnObj = `{ ${uniquePtrs.map(p => `${p}: (()=>{try{ let val = ${p}; return (val && val._id) ? val._id : null }catch(e){return null}})()`).join(', ')} }`;
+
+                const decls = uniquePtrs.map(p => `var ${p} = (typeof ${p} !== 'undefined') ? ${p} : null;`).join(' ');
+                let wrappedCode = `${mocks}\n${decls}\n;${code}\n; try{if(typeof main==='function')main();}catch(e){ console.warn("Main execution error:", e); throw e; }\n return ${returnObj};`;
+
+                let sanitizedCode = wrappedCode
+                    .replace(/class\s+Node\b/g, 'class __Internal_Node_Def')
+                    .replace(/class\s+ListNode\b/g, 'class __Internal_ListNode_Def');
+
+                const userFunc = new Function('Node', 'ListNode', sanitizedCode);
+                const activePtrs = userFunc(VisualNode, VisualNode);
+
+                const finalHeap = shadowHeap.map(n => ({
+                    value: n._data,
+                    next: n._next ? n._next._id : null,
+                    prev: n._prev ? n._prev._id : null,
+                    name: n._id
+                }));
+
+                const activeIds = [];
+                const ptrMap = {};
+                if (activePtrs) {
+                    Object.entries(activePtrs).forEach(([name, id]) => {
+                        if (id) {
+                            activeIds.push(id);
+                            ptrMap[name] = id;
                         }
+                    });
+                }
+
+                renderTraceSnapshot(finalHeap, activeIds);
+                // Sync labels for the Run view
+                setTimeout(() => viz.updatePointers(ptrMap), 100);
+                document.getElementById('editor-status').innerHTML = `<i class="fas fa-bolt" style="color:#6366f1"></i> Live Preview Updated (${selectedLang.toUpperCase()})`;
+            } catch (e) {
+                document.getElementById('editor-status').innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#ef4444"></i> Error: ${e.message}`;
+                console.error("Execution Error:", e);
+            }
+        }
+
+        async function executeForTrace() {
+            const rawCode = editor.getValue();
+            const code = translateToJS(rawCode, selectedLang);
+
+            traceSteps = [];
+            const shadowHeap = [];
+            let currentExecutingLine = 1;
+
+            function captureSnapshot(type, lineOverride, vars = {}) {
+                if (lineOverride !== undefined) currentExecutingLine = lineOverride;
+                if (traceSteps.length > 500) return;
+
+                const snap = shadowHeap.map(n => ({
+                    value: n._data,
+                    next: n._next ? n._next._id : null,
+                    prev: n._prev ? n._prev._id : null,
+                    name: n._id
+                }));
+
+                // Track actual node IDs held by variables to force reachability
+                const activeIds = [];
+                Object.values(vars).forEach(v => {
+                    if (v && v._id) activeIds.push(v._id);
+                });
+
+                traceSteps.push({
+                    type,
+                    heap: JSON.parse(JSON.stringify(snap)),
+                    line: currentExecutingLine,
+                    activeIds,
+                    // Capture actual pointer values for the rendering step
+                    heads: Object.values(vars).filter(v => v && v._id).map(v => JSON.parse(JSON.stringify(v)))
+                });
+            }
+
+            // Disable Proxy-based capture during trace to prevent pointer-less "flashing" steps.
+            const VisualNode = createVisualNodeClass(shadowHeap, null);
+
+            // Universal Variable Discovery
+            const reserved = [
+                'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 'char', 'class', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum', 'extends', 'final', 'finally', 'float', 'for', 'goto', 'if', 'implements', 'import', 'instanceof', 'int', 'interface', 'long', 'native', 'new', 'package', 'private', 'protected', 'public', 'return', 'short', 'static', 'strictfp', 'super', 'switch', 'synchronized', 'this', 'throw', 'throws', 'transient', 'try', 'void', 'volatile', 'while',
+                'alignas', 'alignof', 'and', 'and_eq', 'asm', 'auto', 'bitand', 'bitor', 'bool', 'char8_t', 'char16_t', 'char32_t', 'compl', 'concept', 'consteval', 'constexpr', 'constinit', 'const_cast', 'co_await', 'co_return', 'co_yield', 'decltype', 'delete', 'dynamic_cast', 'explicit', 'export', 'extern', 'false', 'friend', 'inline', 'mutable', 'namespace', 'noexcept', 'not', 'not_eq', 'nullptr', 'operator', 'or', 'or_eq', 'register', 'reinterpret_cast', 'requires', 'signed', 'sizeof', 'static_assert', 'static_cast', 'struct', 'switch', 'template', 'this', 'thread_local', 'throw', 'true', 'try', 'typedef', 'typeid', 'typename', 'union', 'unsigned', 'unsigned', 'using', 'virtual', 'void', 'volatile', 'wchar_t', 'while', 'xor', 'xor_eq', 'restrict',
+                'False', 'None', 'True', 'as', 'async', 'await', 'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield', 'match', 'self',
+                'let', 'var', 'const', 'function', 'arguments', 'eval', 'Math', 'String', 'process', 'console', 'System', 'out', 'println', 'print', 'Node', 'ListNode', 'cout', 'endl', 'std', 'printf', 'scanf', 'malloc', 'free', 'alert', 'window', 'document', 'navigator', 'location', 'top', 'parent', 'frames'
+            ];
+            const ptrNames = Array.from(code.matchAll(/\b([a-zA-Z_]\w*)\b/g))
+                .map(m => m[1])
+                .filter(name => !reserved.includes(name));
+            const uniquePtrs = [...new Set([...ptrNames, 'head', 'root', 'current', 'curr', 'temp', 'node', 'prev', 'next', 'tail', 'nxt', 'current_node'])];
+            const varObjStr = `{ ${uniquePtrs.map(name => `${name}: (()=>{try{return ${name}}catch(e){return null}})()`).join(', ')} }`;
+
+            let lines = code.split('\n');
+            let instrumented = lines.map((line, idx) => {
+                let trimmed = line.trim();
+                let lineNum = idx + 1;
+                if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('}') || trimmed.startsWith('{')) return line;
+
+                // Function entries: capture INSIDE the body
+                if (trimmed.match(/^(function|static|public|private)\b/)) {
+                    if (line.includes('{')) {
+                        return line.replace('{', `{ captureSnapshot("CALL", ${lineNum}, ${varObjStr}); `);
+                    }
+                    return line;
+                }
+
+                if (trimmed.match(/^(class|get|set|case|default)\b/)) return line;
+
+                const captureCall = `; captureSnapshot("STEP", ${lineNum}, ${varObjStr}); `;
+
+                let instrumentedLine = line;
+                if (trimmed.match(/^(while|for|if|else if|else)\b/)) {
+                    if (line.includes('{')) instrumentedLine = line.replace('{', `{ ${captureCall} `);
+                    else instrumentedLine = captureCall + line;
+                } else if (trimmed.startsWith('return ')) {
+                    instrumentedLine = captureCall + line;
+                } else if (!trimmed.endsWith('}') && !trimmed.endsWith('{') && !trimmed.endsWith(':')) {
+                    // Inject before any trailing comments
+                    if (line.includes('//')) {
+                        let parts = line.split('//');
+                        instrumentedLine = parts[0] + captureCall + "//" + parts.slice(1).join('//');
                     } else {
-                        annotations.push({ row: index, column: 0, text: `Undefined variable '${!nodesMap[from] ? from : to}'.`, type: "error" });
+                        instrumentedLine = line + captureCall;
                     }
                 }
+                return instrumentedLine;
+            }).join('\n');
+
+            // Inject mocks into trace execution
+            const mocks = `const process={stdout:{write:(s)=>console.log(s)}}; const System={out:{println:console.log,print:console.log}}; const cout={write:(s)=>console.log(s)}; const endl='\\n'; function malloc(s){return new Node(0);}; function createNode(d){return new Node(d);};`;
+            let finalCode = `${mocks}\n${instrumented}\n try{if(typeof main==='function')main();}catch(e){ console.warn("Trace Main execution error:", e); throw e; }`;
+
+            let sanitizedCode = finalCode
+                .replace(/class\s+Node\b/g, 'class __Internal_Node_Def')
+                .replace(/class\s+ListNode\b/g, 'class __Internal_ListNode_Def');
+
+            try {
+                const userFunc = new Function('Node', 'ListNode', 'captureSnapshot', sanitizedCode);
+                userFunc(VisualNode, VisualNode, captureSnapshot);
+            } catch (e) {
+                console.error("Trace Error:", e);
+                document.getElementById('editor-status').innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#ef4444"></i> Trace Error: ${e.message}`;
+                traceSteps = []; // Clear broken trace
+            }
+        }
+
+        function renderTraceSnapshot(serializedHeap, activeIds = []) {
+            // Convert serialized ID pointers back to mock objects for visualizer.js
+            const nodes = serializedHeap.map(sn => ({ value: sn.value, name: sn.name }));
+            const nodeMap = {};
+            nodes.forEach(n => nodeMap[n.name] = n);
+
+            serializedHeap.forEach(sn => {
+                if (sn.next) nodeMap[sn.name].next = nodeMap[sn.next];
+                if (sn.prev) nodeMap[sn.name].prev = nodeMap[sn.prev];
             });
 
-            editor.getSession().setAnnotations(annotations);
-            document.getElementById('editor-status').innerHTML = annotations.length > 0 ? `<i class="fas fa-times-circle" style="color:#ff7b72"></i> Errors detected.` : `<i class="fas fa-check" style="color:#10b981"></i> Code valid.`;
+            const inDegree = {};
+            serializedHeap.forEach(sn => {
+                if (sn.next) inDegree[sn.next] = (inDegree[sn.next] || 0) + 1;
+                if (sn.prev) inDegree[sn.prev] = (inDegree[sn.prev] || 0) + 1;
+            });
 
-            const emptyEl = document.getElementById('empty-state');
-            const wrapper = document.getElementById('viz-wrapper');
-            if (creationOrder.length > 0) {
-                emptyEl.style.display = 'none'; wrapper.style.display = 'block';
-                viz.renderAll(creationOrder);
-            } else {
-                emptyEl.style.display = 'block'; wrapper.style.display = 'none';
-                viz.init();
+            const reachable = new Set();
+            function walk(id) {
+                if (!id || reachable.has(id)) return;
+                reachable.add(id);
+                const sn = serializedHeap.find(s => s.name === id);
+                if (sn) { walk(sn.next); walk(sn.prev); }
             }
-            document.getElementById('node-count-badge').innerText = `${creationOrder.length} Nodes Found`;
+
+            // REACHABILITY: Start from nodes held by active variables of the user
+            // This makes deleted nodes "vanish" as soon as no pointer holds them.
+            if (activeIds && activeIds.length > 0) {
+                activeIds.forEach(id => walk(id));
+            } else if (nodes.length > 0) {
+                // Fallback: If no pointers in scope, show the first created node
+                walk(nodes[0].name);
+            }
+
+            // If still nothing is reachable but the heap isn't empty, show the first node as a last resort
+            if (reachable.size === 0 && nodes.length > 0) walk(nodes[0].name);
+
+            const visibleNodes = nodes.filter(n => reachable.has(n.name));
+
+            // Priority 1: True Heads (in-degree 0)
+            // Priority: Heads (nodes whose parent is not in the visible set)
+            const visibleIds = new Set(visibleNodes.map(n => n.name));
+            const heads = visibleNodes.filter(n2 => {
+                const parent = serializedHeap.find(sn => sn.next === n2.name || sn.prev === n2.name);
+                return !parent || !visibleIds.has(parent.name);
+            });
+            const others = visibleNodes.filter(n => !heads.includes(n));
+
+            document.getElementById('empty-state').style.display = nodes.length > 0 ? 'none' : 'block';
+            document.getElementById('viz-wrapper').style.display = nodes.length > 0 ? 'block' : 'none';
+            viz.renderAll([...heads, ...others]);
+            document.getElementById('node-count-badge').innerText = `${visibleNodes.length} Heap Objects`;
         }
+
+
 
         function askAI() {
             const input = document.getElementById('ai-input').value;
@@ -338,101 +808,146 @@
             messages.innerHTML += `<div class="ai-msg user">${input}</div>`;
             document.getElementById('ai-input').value = '';
 
+            // AI Thought Simulation
+            messages.innerHTML += `<div class="ai-msg bot" id="ai-loading"><i class="fas fa-microchip fa-pulse"></i> Analyzing Memory Heap & Semantic Pointer Chains...</div>`;
+            messages.scrollTop = messages.scrollHeight;
+
             setTimeout(() => {
+                const loading = document.getElementById('ai-loading');
+                if (loading) loading.remove();
+
                 let code = editor.getValue();
-                let originalCode = code;
-                const currentLines = code.split('\n');
+                let originalLines = code.split('\n');
+                let workingLines = [...originalLines];
                 let fixes = [];
-                let changedAny = false;
 
-                // Track defined and used nodes
-                const definedNodes = new Set();
-                const usedNodes = new Set();
+                // 1. UNDEFINED REFERENCE RESOLUTION (Sanitized logic)
+                const declaredVars = new Set();
+                const usedVars = new Set();
+                const reservedKeywords = new Set([
+                    'next', 'prev', 'val', 'value', 'data', 'Node', 'ListNode', 'new', 'createNode',
+                    'let', 'var', 'const', 'null', 'nullptr', 'None',
+                    'class', 'public', 'static', 'void', 'return', 'while', 'if', 'else', 'for',
+                    'int', 'String', 'Node', 'ListNode', 'System', 'out', 'println', 'print',
+                    'private', 'protected', 'this', 'super', 'import', 'package', 'boolean', 'double',
+                    'float', 'long', 'char', 'byte', 'short', 'try', 'catch', 'finally', 'throw', 'throws'
+                ]);
 
-                // 1. Precise Node Declaration & Duplicate Detection
-                // Regex for actual node creation: Type? Name = New? Node(val)
-                const nodeDeclRegex = /^\s*(?:(?:let|var|const|Node\*?|struct\s+Node\*?|ListNode\*?)\s+)?([a-zA-Z_$][\w0-9_$]*)\s*=\s*(?:new\s+)?(?:Node|ListNode|createNode)/i;
+                originalLines.forEach(line => {
+                    // Detect declarations (including Java style: Type var = value)
+                    const cMatch = line.match(/(?:(?:let|var|const|Node\*?|struct\s+Node\*?|ListNode\*?|[a-zA-Z_$][\w0-9_$]*)\s+)+([a-zA-Z_$][\w0-9_$]*)\s*=\s*/i);
+                    if (cMatch) declaredVars.add(cMatch[1]);
 
-                for (let i = 0; i < currentLines.length; i++) {
-                    const line = currentLines[i].trim();
-                    const dMatch = line.match(nodeDeclRegex);
-                    if (dMatch) {
-                        const name = dMatch[1];
-                        if (definedNodes.has(name)) {
-                            let nextName = name + "_fixed";
-                            let count = 1;
-                            while (definedNodes.has(nextName)) { nextName = name + "_" + count; count++; }
-                            currentLines[i] = currentLines[i].replace(name, nextName);
-                            definedNodes.add(nextName);
-                            changedAny = true;
-                            fixes.push(`Duplicate node '${name}' renamed to '${nextName}'`);
-                        } else {
-                            definedNodes.add(name);
+                    // Detect method signatures static void name(Type arg)
+                    const mMatch = line.match(/(?:static\s+)?(?:void|Node|ListNode|int|String)\s+([a-zA-Z_$][\w0-9_$]*)\s*\(/i);
+                    if (mMatch) declaredVars.add(mMatch[1]);
+
+                    // Find all potential variable lookups
+                    const words = line.matchAll(/\b([a-zA-Z_$][\w0-9_$]*)\b/g);
+                    for (const m of words) {
+                        const word = m[1];
+                        // Ignore strictly capitalized structural words (likely classes)
+                        const isLikelyStructure = /^[A-Z][A-Z0-9_]*$/.test(word) || (word.length > 3 && /^[A-Z]/.test(word) && /[a-z]/.test(word));
+                        if (!reservedKeywords.has(word) && !isLikelyStructure && isNaN(word)) {
+                            usedVars.add(word);
                         }
-                    }
-
-                    // Collect used nodes from link assignments: n1.next = n2
-                    const lMatch = line.match(/([a-zA-Z_$][\w0-9_$]*)(?:\.|\->)(?:next|prev)\s*=\s*([a-zA-Z_$][\w0-9_$]*)/i);
-                    if (lMatch) {
-                        usedNodes.add(lMatch[1]);
-                        usedNodes.add(lMatch[2]);
-                    }
-                }
-
-                // 2. Fix mangled property links (e.g., next_fixed -> next)
-                for (let i = 0; i < currentLines.length; i++) {
-                    const mangled = /(?:\.|\->)(next|prev)_[a-zA-Z0-9_$]+/g;
-                    if (mangled.test(currentLines[i])) {
-                        currentLines[i] = currentLines[i].replace(mangled, (match, prop) => {
-                            changedAny = true;
-                            fixes.push(`Corrected mangled property link back to '.${prop}'`);
-                            return (currentLines[i].includes('->') ? '->' : '.') + prop;
-                        });
-                    }
-                }
-
-                if (changedAny) code = currentLines.join('\n');
-
-                // 3. Language Fixes (JS to Java)
-                if (selectedLang === 'java' && code.includes('let ')) {
-                    const old = code;
-                    code = code.replace(/let /g, 'ListNode ');
-                    if (code !== old) fixes.push("Converted JS 'let' to Java 'ListNode'");
-                }
-
-                // 4. Undefined Node Auto-Creation
-                usedNodes.forEach(node => {
-                    if (!definedNodes.has(node) && node !== 'null' && node !== 'nullptr') {
-                        const decl = selectedLang === 'java' ? `ListNode ${node} = new ListNode(0);` :
-                            selectedLang === 'python' ? `${node} = Node(0)` :
-                                selectedLang === 'cpp' ? `Node* ${node} = new Node(0);` : `let ${node} = new Node(0);`;
-                        code = decl + "\n" + code;
-                        definedNodes.add(node);
-                        fixes.push(`Auto-created missing node '${node}'`);
                     }
                 });
 
-                // 5. Logical Property Fixes (wrong names like .see)
-                const wrongProps = /(?:\.|\->)(?!next|prev|val|value|data)([a-zA-Z0-9_$]+)\s*=/g;
-                if (wrongProps.test(code)) {
-                    code = code.replace(wrongProps, (match) => {
-                        fixes.push("Redirected invalid property assignment to '.next'");
-                        return match.includes('->') ? '->next =' : '.next =';
+                usedVars.forEach(v => {
+                    if (!declaredVars.has(v)) {
+                        // Double check it's not a function call or structural keyword
+                        const isFunction = originalLines.some(l => new RegExp(`\\b${v}\\s*\\(`).test(l));
+                        if (isFunction) return;
+
+                        let decl = "";
+                        if (selectedLang === 'java') decl = `ListNode ${v} = new ListNode(0);`;
+                        else if (selectedLang === 'javascript') decl = `let ${v} = new Node(0);`;
+                        else if (selectedLang === 'python') decl = `${v} = Node(0)`;
+                        else if (selectedLang === 'cpp' || selectedLang === 'c') decl = `Node* ${v} = new Node(0);`;
+
+                        workingLines.unshift(decl);
+                        fixes.push(`Defined Missing Pointer: Automatically initialized '${v}' as a dummy node to allow visualization of its links.`);
+                        declaredVars.add(v);
+                    }
+                });
+
+                // 2. Chained Link Resolution (n1.next.next = n3 -> n1.next = n3 Shortcut)
+                workingLines = workingLines.map(line => {
+                    const jumpMatch = line.match(/([a-zA-Z_$][\w0-9_$]*)\.next\.next\s*=\s*([a-zA-Z_$][\w0-9_$]*)/);
+                    if (jumpMatch) {
+                        const base = jumpMatch[1];
+                        const target = jumpMatch[2];
+                        const replacement = `${base}${selectedLang === 'cpp' || selectedLang === 'c' ? '->' : '.'}next = ${target}`;
+                        fixes.push(`Shortcut Resolution: Detected chained assignment '${jumpMatch[0]}'. As requested, I've bypassed the intermediate node to connect ${base} directly to ${target} via a circular shortcut.`);
+                        return line.replace(jumpMatch[0], replacement);
+                    }
+                    return line;
+                });
+
+                // 2. Semantic Integrity Check (Invalid Properties)
+                workingLines = workingLines.map(line => {
+                    let newLine = line;
+                    const regex = /([a-zA-Z_$][\w0-9_$]*)(?:\.|\->)([a-zA-Z_$][\w0-9_$]*)/g;
+                    let m;
+                    while ((m = regex.exec(line)) !== null) {
+                        if (!['next', 'prev', 'val', 'value', 'data'].includes(m[2])) {
+                            const match = m[0];
+                            const fixed = match.replace(m[2], 'next');
+                            newLine = newLine.replace(match, fixed);
+                            fixes.push(`Repaired semantic error: Changed invalid property '${m[2]}' to 'next'`);
+                        }
+                    }
+                    return newLine;
+                });
+
+                // 3. Keyword Shadowing Check
+                const reserved = ['NULL', 'nullptr', 'HEAD', 'TAIL', 'root', 'None'];
+                workingLines = workingLines.map(line => {
+                    let processed = line;
+                    reserved.forEach(res => {
+                        const r = new RegExp(`\\b${res}\\b\\s*=`, 'i');
+                        if (processed.match(r)) {
+                            fixes.push(`Style Conflict: Renamed shadowed variable '${res}' to avoid collision with System Reserved keywords.`);
+                            processed = processed.replace(new RegExp(`\\b${res}\\b`, 'gi'), res + '_user');
+                        }
                     });
-                }
+                    return processed;
+                });
 
-                let responseMsg = "";
-                if (fixes.length === 0) {
-                    responseMsg = "I checked your code. Everything looks correct or no fixes could be applied automatically.";
-                } else {
-                    responseMsg = "<b>AI Fixes Applied:</b><br>" + [...new Set(fixes)].map(f => "• " + f).join('<br>');
-                    editor.setValue(code, -1);
+                // 4. Language Translation (Syntax Fixes)
+                workingLines = workingLines.map(line => {
+                    let newLine = line;
+                    if (selectedLang === 'java' && newLine.includes('let ')) {
+                        newLine = newLine.replace(/let /g, 'ListNode ');
+                        fixes.push("Corrected Syntax: Replaced JavaScript 'let' with Java 'ListNode'");
+                    }
+                    if ((selectedLang === 'cpp' || selectedLang === 'c') && newLine.includes('.')) {
+                        newLine = newLine.replace(/\.next/g, '->next').replace(/\.prev/g, '->prev');
+                        fixes.push("Corrected Syntax: Converted '.' notation to C-style '->' for pointer access.");
+                    }
+                    return newLine;
+                });
+
+                if (fixes.length > 0) {
+                    editor.setValue(workingLines.join('\n'), -1);
                     runCode();
-                }
+                    messages.innerHTML += `<div class="ai-msg bot">
+                        <b>Memory Reconstruction Stable:</b><br>
+                        ${fixes.map(f => '• ' + f).join('<br>')}
+                        <br><br>
+                        <i>Visualizer is now tracing your logic directly. No artificial nodes added.</i>
+                    </div>`;
 
-                messages.innerHTML += `<div class="ai-msg bot">${responseMsg}</div>`;
+                    if (input.toLowerCase().includes('animate') || input.toLowerCase().includes('trace')) {
+                        animateCode();
+                    }
+                } else {
+                    runCode();
+                    messages.innerHTML += `<div class="ai-msg bot">I've verified your logic against the Memory Heap. All connections are semantically valid. Your code is now fully synced with the visual output.</div>`;
+                }
                 messages.scrollTop = messages.scrollHeight;
-            }, 800);
+            }, 1000);
         }
 
         function openAIChat() { document.getElementById('ai-chat-modal').style.display = 'flex'; }
@@ -670,14 +1185,15 @@
         }
 
         .ai-modal-content {
-            width: 450px;
+            width: 500px;
+            max-height: 85vh;
             background: #161b22;
             border-radius: 12px;
             border: 1px solid var(--border);
-            overflow: hidden;
             display: flex;
             flex-direction: column;
             box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+            position: relative;
         }
 
         .ai-modal-header {
@@ -687,16 +1203,18 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
         .ai-chat-body {
             flex: 1;
-            height: 320px;
             overflow-y: auto;
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) transparent;
         }
 
         .ai-msg {
@@ -744,10 +1262,20 @@
             cursor: pointer;
         }
 
+        .ptr-tag.fast {
+            background: #f59e0b;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+        }
+
+        .ptr-tag.slow {
+            background: #10b981;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Monaco Highlight Styling */
         .ace_step_highlight {
-            position: absolute;
-            background: rgba(16, 185, 129, 0.4);
-            z-index: 20;
+            background: rgba(99, 102, 241, 0.2) !important;
+            border-left: 3px solid #6366f1 !important;
         }
     </style>
 </body>

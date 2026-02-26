@@ -4,7 +4,8 @@
   "description": "Linked List Visualizer Project",
   "main": "index.html",
   "scripts": {
-    "build": "mkdir -p dist && cp -r css js *.html README.md netlify.toml dist/"
+    "build": "if not exist dist mkdir dist && (if exist css xcopy /E /I /Y css dist\\css) && (if exist js xcopy /E /I /Y js dist\\js) && copy /Y *.html dist && copy /Y README.md dist && copy /Y netlify.toml dist",
+    "start": "npx serve ."
   },
   "keywords": [],
   "author": "",

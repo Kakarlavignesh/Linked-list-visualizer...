@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSA Mastery Quiz | Challenge Mode</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --quiz-bg: #0d1117;
+            --quiz-card: rgba(22, 27, 34, 0.95);
+            --option-hover: rgba(99, 102, 241, 0.1);
+        }
+
+        body {
+            background: var(--quiz-bg);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quiz-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .quiz-card {
+            background: var(--quiz-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 800px;
+            padding: 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .progress-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+        }
+
+        .question-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            font-family: 'Outfit';
+            line-height: 1.4;
+        }
+
+        .options-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            padding: 18px 25px;
+            border-radius: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.05rem;
+            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .option-btn:hover {
+            background: var(--option-hover);
+            border-color: var(--accent);
+            color: white;
+            transform: translateX(10px);
+        }
+
+        .option-btn.selected {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .option-btn.correct {
+            background: #10b981 !important;
+            color: white !important;
+            border-color: #10b981 !important;
+        }
+
+        .option-btn.wrong {
+            background: #ef4444 !important;
+            color: white !important;
+            border-color: #ef4444 !important;
+        }
+
+        .footer-actions {
+            margin-top: 40px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .result-screen {
+            display: none;
+            text-align: center;
+        }
+
+        .score-display {
+            font-size: 5rem;
+            font-weight: 900;
+            color: var(--accent);
+            margin: 20px 0;
+            font-family: 'Outfit';
+        }
+
+        .emoji-feedback {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 5px;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+
+        .badge-timer {
+            background: rgba(255, 165, 0, 0.1);
+            color: #ffa500;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body class="dark-mode">
+    <header>
+        <nav class="container">
+            <a href="index.html" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Exit Quiz
+            </a>
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>DSA <span>Mastery</span></span>
+            </div>
+            <div class="badge-timer" id="timer">Time: 00:00</div>
+        </nav>
+    </header>
+
+    <div class="quiz-container">
+        <div class="quiz-card" id="quiz-card">
+            <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+
+            <div id="quiz-ui">
+                <div class="quiz-header">
+                    <div>
+                        <span style="color: var(--text-dim); font-size: 0.9rem; font-weight: 600;">QUESTION</span>
+                        <h4 id="question-count" style="font-size: 1.2rem; color: white;">01/10</h4>
+                    </div>
+                    <div class="progress-circle" id="score-ring">0%</div>
+                </div>
+
+                <div class="question-text" id="question-text">
+                    Loading question...
+                </div>
+
+                <div class="options-grid" id="options-grid">
+                    <!-- Options injected here -->
+                </div>
+
+                <div class="footer-actions">
+                    <button id="next-btn" class="btn btn-filled" style="display: none;" onclick="nextQuestion()">NEXT
+                        QUESTION <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <div class="result-screen" id="result-screen">
+                <div class="emoji-feedback" id="emoji-feedback">🏆</div>
+                <h2 style="font-size: 2.5rem; font-family: 'Outfit'; margin-bottom: 10px;" id="result-title">
+                    Extraordinary!</h2>
+                <p style="color: var(--text-dim); margin-bottom: 30px;">You've completed the DSA Mastery Challenge.</p>
+
+                <div class="score-display" id="final-score">8/10</div>
+
+                <div style="display: flex; gap: 15px; justify-content: center; margin-top: 40px;">
+                    <a href="quiz.html" id="retry-link" class="btn btn-secondary">Try Again <i
+                            class="fas fa-redo"></i></a>
+                    <a href="index.html" class="btn btn-filled">Back to Home <i class="fas fa-home"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/quiz-data.js"></script>
+    <script>
+        let currentQuestions = [];
+        let currentIdx = 0;
+        let score = 0;
+        let answered = false;
+        let startTime;
+        let timerInterval;
+
+        window.onload = () => {
+            const params = new URLSearchParams(window.location.search);
+            const count = parseInt(params.get('count')) || 10;
+            const topic = params.get('topic') || 'all';
+            document.getElementById('retry-link').href = `quiz.html?count=${count}&topic=${topic}`;
+
+            // Filter by topic if not 'all'
+            let filteredQuestions = dsaQuizData;
+            if (topic !== 'all') {
+                filteredQuestions = dsaQuizData.filter(q => q.topic === topic);
+            }
+
+            // Randomize and slice questions
+            currentQuestions = [...filteredQuestions]
+                .sort(() => 0.5 - Math.random())
+                .slice(0, Math.min(count, filteredQuestions.length));
+
+            if (currentQuestions.length === 0) {
+                document.getElementById('question-text').innerText = "No questions found for this topic yet. Check back soon!";
+                return;
+            }
+
+            startTimer();
+            loadQuestion();
+        };
+
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                const secs = String(elapsed % 60).padStart(2, '0');
+                document.getElementById('timer').innerText = `Time: ${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function loadQuestion() {
+            answered = false;
+            const q = currentQuestions[currentIdx];
+            document.getElementById('question-count').innerText = `${String(currentIdx + 1).padStart(2, '0')}/${currentQuestions.length}`;
+            document.getElementById('question-text').innerText = q.question;
+            document.getElementById('progress-bar').style.width = `${((currentIdx) / currentQuestions.length) * 100}%`;
+            document.getElementById('score-ring').innerText = `${Math.round((score / currentQuestions.length) * 100)}%`;
+            document.getElementById('next-btn').style.display = 'none';
+
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerHTML = `<span style="opacity: 0.5; font-weight: 800;">${String.fromCharCode(65 + idx)}</span> ${opt}`;
+                btn.onclick = () => selectOption(idx, btn);
+                grid.appendChild(btn);
+            });
+
+            gsap.from('#quiz-ui', { opacity: 0, y: 20, duration: 0.5 });
+        }
+
+        function selectOption(idx, btn) {
+            if (answered) return;
+            answered = true;
+
+            const q = currentQuestions[currentIdx];
+            const allBtns = document.querySelectorAll('.option-btn');
+
+            if (idx === q.answer) {
+                score++;
+                btn.classList.add('correct');
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { y: 0.8 },
+                    colors: ['#10b981', '#ffffff']
+                });
+            } else {
+                btn.classList.add('wrong');
+                allBtns[q.answer].classList.add('correct');
+            }
+
+            document.getElementById('next-btn').style.display = 'block';
+            document.getElementById('score-ring').innerText = `${Math.round((score / currentQuestions.length) * 100)}%`;
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            if (currentIdx < currentQuestions.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            clearInterval(timerInterval);
+            document.getElementById('quiz-ui').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'block';
+            document.getElementById('progress-bar').style.width = '100%';
+
+            const percent = (score / currentQuestions.length) * 100;
+            let emoji = '📚';
+            let title = 'Keep Learning!';
+
+            if (percent >= 90) {
+                emoji = '🏆';
+                title = 'Extraordinary!';
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            } else if (percent >= 70) {
+                emoji = '🌟';
+                title = 'Great Job!';
+            } else if (percent >= 50) {
+                emoji = '👍';
+                title = 'Good Effort!';
+            }
+
+            document.getElementById('emoji-feedback').innerText = emoji;
+            document.getElementById('result-title').innerText = title;
+            document.getElementById('final-score').innerText = `${score}/${currentQuestions.length}`;
+
+            gsap.from('#result-screen', { scale: 0.8, opacity: 0, duration: 0.8, ease: "back.out(1.7)" });
+        }
+    </script>
+</body>
+
+</html>

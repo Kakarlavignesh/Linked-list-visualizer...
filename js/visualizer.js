@@ -90,11 +90,11 @@ class Visualizer {
             let current = node;
             while (current && !renderedSet.has(current) && displayCount < 40) {
                 renderedSet.add(current);
-                const nodeEl = this.createNodeElement(current.value, displayCount);
+                const nodeEl = this.createNodeElement(current, displayCount);
                 nodeWrapper.appendChild(nodeEl);
                 this.nodeElements.set(current, nodeEl);
 
-                current = current.next;
+                current = current.next || current._next;
                 displayCount++;
             }
         });
@@ -121,15 +121,22 @@ class Visualizer {
     }
 
     drawArrows(allNodes, renderedSet) {
+        const nodesArray = [...renderedSet];
         renderedSet.forEach(node => {
-            // Forward/Singly/Cycle Links
-            if (node.next && this.nodeElements.has(node)) {
-                // If the next node is hidden (not in renderedSet due to max nodes), don't draw
-                if (this.nodeElements.has(node.next)) {
+            // Forward/Singly/Cycle/Shortcut Links
+            const nextNode = node.next || node._next;
+            if (nextNode && this.nodeElements.has(node)) {
+                if (this.nodeElements.has(nextNode)) {
                     const fromEl = this.nodeElements.get(node);
-                    const toEl = this.nodeElements.get(node.next);
-                    const isCycle = [...renderedSet].indexOf(node.next) <= [...renderedSet].indexOf(node);
-                    this.drawArrow(fromEl, toEl, isCycle, 'next');
+                    const toEl = this.nodeElements.get(nextNode);
+
+                    const fromIdx = nodesArray.indexOf(node);
+                    const toIdx = nodesArray.indexOf(node.next);
+
+                    const isCycle = toIdx <= fromIdx;
+                    const isForwardJump = toIdx > fromIdx + 1;
+
+                    this.drawArrow(fromEl, toEl, isCycle || isForwardJump, 'next');
                 }
             }
             // Backward/Doubly Links
@@ -145,31 +152,40 @@ class Visualizer {
         const fromRect = fromEl.getBoundingClientRect();
         const toRect = toEl.getBoundingClientRect();
         const targetRect = this.renderTarget.getBoundingClientRect();
+        const scrollX = this.renderTarget.scrollLeft;
+        const scrollY = this.renderTarget.scrollTop;
 
         let x1, y1, x2, y2;
 
         if (type === 'next') {
-            x1 = fromRect.right - targetRect.left;
-            y1 = fromRect.top + fromRect.height * 0.4 - targetRect.top;
-            x2 = toRect.left - targetRect.left;
-            y2 = toRect.top + toRect.height * 0.4 - targetRect.top;
+            x1 = fromRect.right - targetRect.left + scrollX;
+            y1 = fromRect.top + fromRect.height * 0.4 - targetRect.top + scrollY;
+            x2 = toRect.left - targetRect.left + scrollX;
+            y2 = toRect.top + toRect.height * 0.4 - targetRect.top + scrollY;
         } else {
-            // Adjust offsets for prev arrows to avoid overlap
-            x1 = fromRect.left - targetRect.left;
-            y1 = fromRect.top + fromRect.height * 0.6 - targetRect.top;
-            x2 = toRect.right - targetRect.left;
-            y2 = toRect.top + toRect.height * 0.6 - targetRect.top;
+            x1 = fromRect.left - targetRect.left + scrollX;
+            y1 = fromRect.top + fromRect.height * 0.6 - targetRect.top + scrollY;
+            x2 = toRect.right - targetRect.left + scrollX;
+            y2 = toRect.top + toRect.height * 0.6 - targetRect.top + scrollY;
         }
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
         let d;
         if (isCycle) {
-            const midY = y1 - 80; // slightly smaller cycle curve
+            // Backward Circular/Cycle Link (Red Dash)
+            const midY = y1 - 80;
             d = `M ${x1 - 10} ${y1} C ${x1 - 10} ${midY}, ${x2 + 10} ${midY}, ${x2 + 10} ${y2}`;
             path.setAttribute('marker-end', 'url(#arrowhead-red)');
             path.setAttribute('stroke', '#ff7b72');
             path.setAttribute('stroke-dasharray', '5,5');
+        } else if (type === 'next' && Math.abs(x2 - x1) > 250) {
+            // Forward Shortcut/Jump Link (Rainbow Curve)
+            const midX = (x1 + x2) / 2;
+            const midY = y1 - 100; // Higher arc for jumping nodes
+            d = `M ${x1} ${y1} Q ${midX} ${midY}, ${x2 - 5} ${y2}`;
+            path.setAttribute('marker-end', 'url(#arrowhead)');
+            path.setAttribute('stroke', '#6366f1');
         } else if (type === 'prev') {
             // Curve backward arrows slightly downwards
             const midX = (x1 + x2) / 2;
@@ -190,21 +206,21 @@ class Visualizer {
         this.svgContainer.appendChild(path);
     }
 
-    createNodeElement(value, index) {
+    createNodeElement(node, index) {
         const div = document.createElement('div');
         div.className = 'visual-node';
         div.innerHTML = `
             <div class="node-internal">
                 <div class="node-section data-sec">
                     <span class="section-label">DATA</span>
-                    <div class="node-data">${value}</div>
+                    <div class="node-data">${node.value || node.val || node.data || node._data || 0}</div>
                 </div>
                 <div class="node-section next-sec">
                     <span class="section-label">NEXT</span>
                     <div class="node-ptr">next</div>
                 </div>
             </div>
-            <div class="node-id">n${index + 1}</div>
+            <div class="node-id">${node.name || 'n' + (index + 1)}</div>
         `;
         return div;
     }
@@ -234,9 +250,18 @@ class Visualizer {
     }
 
     updatePointers(nodePointers) {
-        // nodePointers: { 'slow': nodeObj, 'fast': nodeObj }
+        // nodePointers: { 'slow': nodeObj OR 'slow': 'n1' }
         Object.entries(nodePointers).forEach(([name, node]) => {
-            const nodeEl = this.nodeElements.get(node);
+            const nodeId = (typeof node === 'string') ? node : (node ? (node.id || node._id) : null);
+            if (!nodeId) return;
+
+            // Find the node element by searching for the node-id bubble text
+            let nodeEl = null;
+            this.nodeElements.forEach((el, nodeObj) => {
+                const currentId = nodeObj.name || nodeObj._id || nodeObj.id;
+                if (currentId === nodeId) nodeEl = el;
+            });
+
             if (!nodeEl) return;
 
             let ptrEl = this.container.querySelector(`.ptr-tag.${name}`);

@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSA VISUALIZER | String Logic Visualizer</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+
+<body class="dark-mode premium-layout">
+    <header>
+        <nav class="container">
+            <a href="index.html" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+            <div class="logo">
+                <a href="index.html"
+                    style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>DSA <span>Visualizer</span></span>
+                </a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="visualizer.html">LinkedList</a></li>
+                <li><a href="array-visualizer.html">Arrays</a></li>
+                <li><a href="string-visualizer.html" class="active">Strings</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="app-main">
+        <div class="main-content">
+            <div class="split-screen" style="flex: 1;">
+
+                <!-- Editor Pane -->
+                <div class="workspace-pane editor-pane">
+                    <div class="pane-header lang-header-main">
+                        <div class="header-tools">
+                            <i class="fas fa-quote-right" style="font-size: 1.2rem; color: #ec4899;"></i>
+                            <div class="custom-dropdown" id="lang-dropdown">
+                                <div class="dropdown-trigger" onclick="toggleDropdown('lang-options')">
+                                    <span id="current-lang">JavaScript (JS)</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="dropdown-options" id="lang-options">
+                                    <div onclick="setLanguage('javascript', 'JavaScript (JS)')">JavaScript (JS)</div>
+                                    <div onclick="setLanguage('python', 'Python (Py)')">Python (Py)</div>
+                                    <div onclick="setLanguage('java', 'Java (OOP)')">Java (OOP)</div>
+                                    <div onclick="setLanguage('c', 'C (STRICT)')">C (STRICT)</div>
+                                    <div onclick="setLanguage('cpp', 'C++ (STL)')">C++ (STL)</div>
+                                </div>
+                            </div>
+
+                            <div class="custom-dropdown" id="ex-dropdown">
+                                <div class="dropdown-trigger" onclick="toggleDropdown('ex-options')"
+                                    style="background: #2d333b; border-color: #30363d; box-shadow: none;">
+                                    <span id="current-ex">Load Pattern...</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="dropdown-options" id="ex-options">
+                                    <div onclick="loadExample('reverse')">String Reverse</div>
+                                    <div onclick="loadExample('palindrome')">Palindrome Check</div>
+                                    <div onclick="loadExample('anagram')">Anagram Logic</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="header-actions" style="display: flex; gap: 10px;">
+                            <button onclick="animateCode()" class="btn-animate"
+                                style="background: #ec4899; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i
+                                    class="fas fa-play"></i> Animate</button>
+                            <button onclick="runCode()" class="btn-run-pro" style="background: #8b5cf6;"><i
+                                    class="fas fa-bolt"></i> RUN</button>
+                        </div>
+                    </div>
+                    <div id="editor" class="editor-content"></div>
+                    <div class="editor-footer-status">
+                        <div id="editor-status"><i class="fas fa-check"></i> System Ready</div>
+                    </div>
+                </div>
+
+                <!-- Visualizer Pane -->
+                <div class="workspace-pane viz-pane">
+                    <div class="pane-header">
+                        <div class="title"><i class="fas fa-microchip"></i> Character Sequence Visualizer</div>
+                        <div class="viz-meta">
+                            <span id="string-len-badge" class="node-badge" style="background: #ec4899;">0 Chars</span>
+                        </div>
+                    </div>
+                    <div class="viz-container-main" id="viz-container">
+                        <div id="empty-state" class="empty-state-msg">
+                            <div class="pulse-icon" style="color: #ec4899;"><i class="fas fa-font"></i></div>
+                            <h3>Waiting for String Operations</h3>
+                            <p>Write your code or load an example.<br>
+                                Use <code>str.split('')</code> or <code>s[i]</code> to begin.</p>
+                        </div>
+                        <div id="viz-wrapper" style="display: none; width: 100%; height: 100%;">
+                        </div>
+                    </div>
+                    <div class="viz-status-bar">
+                        <div id="status-text">String Stream Online...</div>
+                        <div class="backend-label">STATE: LIVE</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Multi-Language Logic & Array (Shared) Integration -->
+    <script src="js/array-visualizer.js"></script>
+    <script>
+        let editor, viz;
+        let selectedLang = 'javascript';
+        let traceSteps = [];
+        let isAnimating = false;
+        let vizVersion = 0;
+
+        const langTemplates = {
+            javascript: `// JavaScript String Logic\nlet s = "ALGORITHM";\nlet chars = s.split('');\nlet i = 0;\nlet j = chars.length - 1;\n\nwhile (i < j) {\n  let temp = chars[i];\n  chars[i] = chars[j];\n  chars[j] = temp;\n  i++; j--;\n}\n\nlet result = chars.join('');`,
+            python: `# Python String Logic\ns = "ALGORITHM"\nchars = list(s)\nl, r = 0, len(chars) - 1\n\nwhile l < r:\n    chars[l], chars[r] = chars[r], chars[l]\n    l += 1; r -= 1\n\nresult = "".join(chars)`,
+            java: `// Java String Logic\npublic class Solution {\n    public static void main(String[] args) {\n        String s = "ALGORITHM";\n        char[] chars = s.toCharArray();\n        int i = 0, j = chars.length - 1;\n        \n        while (i < j) {\n            char t = chars[i];\n            chars[i] = chars[j];\n            chars[j] = t;\n            i++; j--;\n        }\n    }\n}`,
+            c: `// C String Logic\n#include <stdio.h>\n#include <string.h>\n\nint main() {\n    char chars[] = "ALGORITHM";\n    int n = strlen(chars);\n    int i = 0, j = n - 1;\n    \n    while (i < j) {\n        char t = chars[i];\n        chars[i] = chars[j];\n        chars[j] = t;\n        i++; j--;\n    }\n    return 0;\n}`,
+            cpp: `// C++ String Logic\n#include <iostream>\n#include <string>\n#include <algorithm>\nusing namespace std;\n\nint main() {\n    string s = "ALGORITHM";\n    int i = 0, j = s.length() - 1;\n    \n    while (i < j) {\n        swap(s[i], s[j]);\n        i++; j--;\n    }\n    return 0;\n}`
+        };
+
+        const examples = {
+            reverse: {
+                javascript: `let s = "REVERSE";\nlet arr = s.split('');\nlet i = 0, j = arr.length - 1;\nwhile(i < j) {\n  [arr[i], arr[j]] = [arr[j], arr[i]];\n  i++; j--;\n}`,
+                python: `s = "REVERSE"\narr = list(s)\ni, j = 0, len(arr) - 1\nwhile i < j:\n    arr[i], arr[j] = arr[j], arr[i]\n    i += 1; j -= 1`,
+                java: `String s = "REVERSE";\nchar[] arr = s.toCharArray();\nint i = 0, j = arr.length - 1;\nwhile (i < j) {\n    char t = arr[i];\n    arr[i] = arr[j];\n    arr[j] = t;\n    i++; j--;\n}`,
+                c: `char arr[] = "REVERSE";\nint i = 0, j = 6;\nwhile (i < j) {\n    char t = arr[i];\n    arr[i] = arr[j];\n    arr[j] = t;\n    i++; j--;\n}`,
+                cpp: `string arr = "REVERSE";\nint i = 0, j = arr.length() - 1;\nwhile (i < j) {\n    swap(arr[i], arr[j]);\n    i++; j--;\n}`
+            },
+            palindrome: {
+                javascript: `let s = "RACECAR";\nlet i = 0, j = s.length - 1;\nlet isPal = true;\nwhile(i < j) {\n  if(s[i] !== s[j]) { isPal = false; break; }\n  i++; j--;\n}`,
+                python: `s = "RACECAR"\ni, j = 0, len(s) - 1\nis_pal = True\nwhile i < j:\n    if s[i] != s[j]:\n        is_pal = False; break\n    i += 1; j -= 1`,
+                java: `String s = "RACECAR";\nint i = 0, j = s.length() - 1;\nboolean isPal = true;\nwhile (i < j) {\n    if (s.charAt(i) != s.charAt(j)) {\n        isPal = false; break;\n    }\n    i++; j--;\n}`,
+                c: `char s[] = "RACECAR";\nint i = 0, j = 6;\nwhile (i < j) {\n    if (s[i] != s[j]) break;\n    i++; j--;\n}`,
+                cpp: `string s = "RACECAR";\nint i = 0, j = s.length() - 1;\nwhile (i < j) {\n    if (s[i] != s[j]) break;\n    i++; j--;\n}`
+            },
+            anagram: {
+                javascript: `let s1 = "LISTEN", s2 = "SILENT";\nlet a1 = s1.split('').sort();\nlet a2 = s2.split('').sort();\nlet res = JSON.stringify(a1) === JSON.stringify(a2);`,
+                python: `s1, s2 = "LISTEN", "SILENT"\na1, a2 = sorted(s1), sorted(s2)\nresult = a1 == a2`,
+                java: `String s1 = "LISTEN", s2 = "SILENT";\nchar[] a1 = s1.toCharArray();\nchar[] a2 = s2.toCharArray();\njava.util.Arrays.sort(a1);\njava.util.Arrays.sort(a2);`,
+                c: `// Anagram check (manual sort not shown)\nchar s1[] = "LISTEN", s2[] = "SILENT";`,
+                cpp: `string s1 = "LISTEN", s2 = "SILENT";\nsort(s1.begin(), s1.end());\nsort(s2.begin(), s2.end());`
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMonaco(() => {
+                viz = new ArrayVisualizer('viz-container');
+                setLanguage('javascript', 'JavaScript (JS)');
+            });
+        });
+
+        function initMonaco(callback) {
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+            require(['vs/editor/editor.main'], function () {
+                editor = monaco.editor.create(document.getElementById('editor'), {
+                    value: langTemplates['javascript'] || '',
+                    language: 'javascript',
+                    theme: 'vs-dark',
+                    automaticLayout: true,
+                    fontSize: 14,
+                    fontFamily: "'Fira Code', monospace",
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    roundedSelection: true,
+                    contextmenu: true,
+                    renderLineHighlight: 'all',
+                    cursorBlinking: 'smooth',
+                    glyphMargin: true,
+                    wordWrap: 'on'
+                });
+
+                // Fix cursor miscalculation by waiting for fonts
+                document.fonts.ready.then(() => {
+                    monaco.editor.remeasureFonts();
+                    editor.layout();
+                });
+
+                editor.onDidChangeModelContent(() => {
+                    clearTimeout(window.runTimer);
+                    window.runTimer = setTimeout(runCode, 500);
+                });
+
+                if (callback) callback();
+            });
+        }
+
+        function setLanguage(val, label) {
+            selectedLang = val;
+            document.getElementById('current-lang').innerText = label;
+            document.getElementById('lang-options').classList.remove('show');
+            if (editor) {
+                const model = editor.getModel();
+                monaco.editor.setModelLanguage(model, val === 'cpp' || val === 'c' ? 'cpp' : val);
+                editor.setValue(langTemplates[val] || '');
+                // Ensure layout is recalculated for cursor position
+                setTimeout(() => {
+                    editor.layout();
+                    editor.focus();
+                }, 10);
+            }
+            runCode();
+        }
+
+
+        function toggleDropdown(id) {
+            const options = document.getElementById(id);
+            document.querySelectorAll('.dropdown-options').forEach(a => { if (a.id !== id) a.classList.remove('show'); });
+            options.classList.toggle('show');
+        }
+
+        function loadExample(key) {
+            document.getElementById('current-ex').innerText = key.toUpperCase();
+            document.getElementById('ex-options').classList.remove('show');
+            if (editor) {
+                editor.setValue(examples[key][selectedLang] || langTemplates[selectedLang]);
+            }
+            runCode();
+        }
+
+        // --- EXECUTION ENGINE ---
+
+        function runCode() {
+            vizVersion++;
+            const rawCode = editor.getValue();
+            if (!rawCode.trim()) return;
+
+            try {
+                let instrumented = translate(rawCode, selectedLang);
+
+                // Universal Variable Discovery
+                const ptrNames = Array.from(rawCode.matchAll(/\b([a-zA-Z_]\w*)\b/g))
+                    .map(m => m[1])
+                    .filter(name => !['let', 'const', 'var', 'function', 'class', 'if', 'for', 'while', 'return', 'null', 'true', 'false', 'new'].includes(name));
+                const uniquePtrs = [...new Set([...ptrNames, 'chars', 'arr', 's', 'v', 'str'])];
+
+                const executor = new Function('console', `
+                    try {
+                        ${instrumented}
+                        
+                        let vars = { ${uniquePtrs.map(p => `${p}: (()=>{try{return ${p}}catch(e){return null}})()`).join(', ')} };
+                        
+                        // Find any variable that is a string or array
+                        let targetSeq = vars.chars || vars.arr || vars.s || vars.v || vars.str || null;
+                        if (!targetSeq) {
+                            for (let v of Object.values(vars)) {
+                                if (Array.isArray(v) || typeof v === 'string') { targetSeq = v; break; }
+                            }
+                        }
+
+                        // Convert to char array if it's a string
+                        const snap = Array.isArray(targetSeq) ? [...targetSeq] : (typeof targetSeq === 'string' ? targetSeq.split('') : null);
+                        
+                        return { seq: snap, ptrs: vars };
+                    } catch(e) { 
+                        console.error(e);
+                        return null; 
+                    }
+                `);
+
+                const result = executor(console);
+                if (result && result.seq && Array.isArray(result.seq)) {
+                    document.getElementById('empty-state').style.display = 'none';
+                    document.getElementById('viz-wrapper').style.display = 'flex';
+                    viz.render(result.seq, [], result.ptrs);
+                    document.getElementById('string-len-badge').innerText = `${result.seq.length} Chars`;
+                }
+            } catch (e) {
+                console.error("Execution Error:", e);
+            }
+        }
+
+        async function animateCode() {
+            const version = ++vizVersion;
+            isAnimating = true;
+
+            const rawCode = editor.getValue();
+            const translated = translate(rawCode, selectedLang);
+
+            traceSteps = [];
+
+            // --- Shadow Array Proxy Logic ---
+            const createShadowArray = (initial, capture) => {
+                let data = [...initial];
+                return new Proxy(data, {
+                    set: (target, prop, value) => {
+                        target[prop] = value;
+                        if (!isNaN(prop)) {
+                            capture(`SET INDEX ${prop}`);
+                        }
+                        return true;
+                    },
+                    get: (target, prop) => {
+                        if (prop === 'push' || prop === 'pop' || prop === 'splice') {
+                            return (...args) => {
+                                const res = Array.prototype[prop].apply(target, args);
+                                capture(prop.toUpperCase());
+                                return res;
+                            };
+                        }
+                        return target[prop];
+                    }
+                });
+            };
+
+            // Universal Variable Discovery
+            const allNames = Array.from(rawCode.matchAll(/\b([a-zA-Z_]\w*)\b/g))
+                .map(m => m[1])
+                .filter(name => !['let', 'const', 'var', 'function', 'class', 'if', 'for', 'while', 'return', 'null', 'true', 'false', 'new', 'this', 'static', 'public', 'private'].includes(name));
+            const ptrNames = [...new Set([...allNames, 'i', 'j', 'k', 'left', 'right', 'mid', 'low', 'high', 'p', 'q', 'l', 'r', 'm', 'arr', 'data', 'nums', 'chars', 's', 'str'])];
+            const varObjStr = `{ ${ptrNames.map(p => `${p}: (()=>{try{return ${p}}catch(e){return null}})()`).join(', ')} }`;
+
+            const captureSnapshot = (type, line, vars = {}) => {
+                // For strings, try to find chars, arr, s, or any array/string
+                let seqVar = vars.chars || vars.arr || vars.s || vars.v || vars.str || null;
+                if (!seqVar) {
+                    for (let v of Object.values(vars)) {
+                        if (Array.isArray(v) || typeof v === 'string') { seqVar = v; break; }
+                    }
+                }
+
+                const snap = Array.isArray(seqVar) ? [...seqVar] : (typeof seqVar === 'string' ? seqVar.split('') : []);
+
+                const ptrSnap = {};
+                Object.entries(vars).forEach(([k, v]) => {
+                    if (ptrNames.includes(k)) ptrSnap[k] = v;
+                });
+
+                traceSteps.push({
+                    seq: snap,
+                    ptrs: ptrSnap,
+                    line: line,
+                    type: type
+                });
+            };
+
+            let lines = translated.split('\n');
+            let instrumented = lines.map((line, idx) => {
+                const lineNum = idx + 1;
+                let trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('}') || trimmed.startsWith('{') || trimmed.startsWith('catch')) return line;
+
+                const captureCall = ` captureSnapshot("STEP", ${lineNum}, ${varObjStr}); `;
+
+                // Wrap array literals and list() / split() results
+                let p = line.replace(/=\s*\[(.*?)\]/g, '= createShadowArray([$1], (t) => captureSnapshot(t, ${lineNum}, ${varObjStr}))')
+                    .replace(/\.split\(['"]{2}\)/g, '.split("").slice()') // simplistic
+                    .replace(/list\((.*?)\)/g, 'createShadowArray([...$1], (t) => captureSnapshot(t, ${lineNum}, ${varObjStr}))');
+
+                if (trimmed.match(/^(while|for|if|else if|else)\b/)) {
+                    return (p.includes('{')) ? p.replace('{', `{ ${captureCall}`) : `${captureCall} ` + p;
+                }
+                return p + captureCall;
+            }).join('\n');
+
+            try {
+                const traceExec = new Function('captureSnapshot', 'createShadowArray', 'console', `
+                    try {
+                        ${instrumented}
+                    } catch(e) { console.error(e); }
+                `);
+                traceExec(captureSnapshot, createShadowArray, console);
+
+                let decorations = [];
+                for (let i = 0; i < traceSteps.length; i++) {
+                    const step = traceSteps[i];
+                    if (version !== vizVersion) break;
+
+                    viz.render(step.seq, [], step.ptrs);
+
+                    if (editor && step.line) {
+                        decorations = editor.deltaDecorations(decorations, [
+                            {
+                                range: new monaco.Range(step.line, 1, step.line, 1),
+                                options: { isWholeLine: true, className: 'ace_step_highlight', glyphMarginClassName: 'fas fa-arrow-right' }
+                            }
+                        ]);
+                        editor.revealLineInCenter(step.line);
+                    }
+
+                    const delay = step.type === 'STEP' ? 600 : 300;
+                    await new Promise(r => setTimeout(r, delay));
+                }
+            } catch (e) {
+                console.error("Animation Error:", e);
+            } finally {
+                isAnimating = false;
+            }
+        }
+
+        function translate(code, lang) {
+            if (lang === 'javascript') return code;
+
+            let lines = code.split('\n');
+            let res = [];
+            let stack = [0];
+
+            lines.forEach(line => {
+                let trimmed = line.trim();
+                let p = line;
+
+                if (!trimmed) { res.push(""); return; }
+
+                if (lang === 'python') {
+                    if (trimmed.startsWith('#')) {
+                        res.push('//' + line.substring(line.indexOf('#') + 1));
+                        return;
+                    }
+
+                    let indent = line.search(/\S/);
+                    while (indent < stack[stack.length - 1]) {
+                        stack.pop();
+                        res.push(" ".repeat(stack[stack.length - 1]) + "}");
+                    }
+
+                    // Complex range translation for Python
+                    p = p.replace(/for\s+(\w+)\s+in\s+range\((.*?)\):/g, (match, v, rangeArgs) => {
+                        let args = rangeArgs.split(',').map(a => a.trim());
+                        if (args.length === 1) {
+                            return `for (let ${v} = 0; ${v} < ${args[0]}; ${v}++) {`;
+                        } else if (args.length === 2) {
+                            return `for (let ${v} = ${args[0]}; ${v} < ${args[1]}; ${v}++) {`;
+                        } else if (args.length === 3) {
+                            return `for (let ${v} = ${args[0]}; ${v} < ${args[1]}; ${v} += ${args[2]}) {`;
+                        }
+                        return match;
+                    });
+
+                    p = p.replace(/def\s+(\w+)\s*\((.*?)\):/g, 'function $1($2) {')
+                        .replace(/class\s+(\w+):/g, 'class $1 {')
+                        .replace(/\bNone\b/g, 'null')
+                        .replace(/\bTrue\b/g, 'true')
+                        .replace(/\bFalse\b/g, 'false')
+                        .replace(/print\s*\((.*?)\)/g, 'console.log($1)')
+                        .replace(/if\s+(.*?):/g, 'if ($1) {')
+                        .replace(/elif\s+(.*?):/g, 'else if ($1) {')
+                        .replace(/else\s*:/g, 'else {')
+                        .replace(/while\s+(.*?):/g, 'while ($1) {')
+                        .replace(/for\s+(.*?)\s+in\s+(.*?):/g, 'for (let $1 of $2) {')
+                        .replace(/len\((.*?)\)/g, '$1.length')
+                        .replace(/sorted\((.*?)\)/g, '$1.split("").sort()')
+                        .replace(/list\((.*?)\)/g, '$1.split("")')
+                        .replace(/join\((.*?)\)/g, 'join($1)')
+                        .replace(/\b(i|j|l|r|m|left|right)\s*\+=\s*(.*?)\b/g, '$1 = $1 + $2')
+                        .replace(/\b(i|j|l|r|m|left|right)\s*-=\s*(.*?)\b/g, '$1 = $1 - $2');
+
+                    if (p.trim().endsWith('{')) {
+                        stack.push(indent + 4);
+                    }
+                } else if (lang === 'java' || lang === 'c' || lang === 'cpp') {
+                    p = p.replace(/(int|float|double|char|long|boolean|auto|var)\b\s*(\[\])?\s*(\w+)\s*=\s*\{(.*?)\}/g, 'let $3 = [$4]')
+                        .replace(/(int|float|double|char|long|boolean|auto|var)\b\s*(\[\])?\s*(\w+)\s*=\s*(.*?);/g, 'let $3 = $4;')
+                        .replace(/(int|float|double|char|long|boolean|auto|var)\b\s*(\[\])?\s*(\w+)\s*=\s*"(.*?)";/g, 'let $3 = "$4";')
+                        .replace(/(int|float|double|char|long|boolean|auto|var)\b\s*(\w+);/g, 'let $2;')
+                        .replace(/char\[\]\s+(\w+)\s*=\s*(\w+)\.toCharArray\(\);/g, 'let $1 = $2.split("");')
+                        .replace(/(\w+)\.charAt\((\w+)\)/g, '$1[$2]')
+                        .replace(/\.length\(\)/g, '.length')
+                        .replace(/\.size\(\)/g, '.length')
+                        .replace(/\.length/g, '.length')
+                        .replace(/System\.out\.println\((.*?)\);/g, 'console.log($1);')
+                        .replace(/printf\(.*?,(.*?)\);/g, 'console.log($1);')
+                        .replace(/cout\s*<<\s*(.*?)\s*<<\s*endl;/g, 'console.log($1);')
+                        .replace(/public\s+static\s+void\s+main\s*\(.*?\)\s*\{/, 'function main(args) {')
+                        .replace(/public\s+class\s+\w+\s*\{/, '// class wrapper removed')
+                        .replace(/#include\s*<.*?>/g, '')
+                        .replace(/using\s+namespace\s+\w+;/g, '')
+                        .replace(/swap\((\w+\[\w+\]),\s*(\w+\[\w+\])\)/g, '[$1, $2] = [$2, $1]')
+                        .replace(/strlen\((\w+)\)/g, '$1.length');
+
+                    // Generic Java/C++ method pattern
+                    p = p.replace(/(?:(public|private|static|void|int|boolean|String|auto)\s+)*(\w+)\s*\((.*?)\)\s*\{/g, (m, t, name, args) => {
+                        if (['if', 'while', 'for', 'switch', 'catch'].includes(name.trim())) return m;
+                        let cleanArgs = args.split(',').map(a => a.trim().split(/\s+/).pop()).join(', ');
+                        return `function ${name}(${cleanArgs}) {`;
+                    });
+                }
+                res.push(p);
+            });
+
+            while (stack.length > 1) {
+                stack.pop();
+                res.push(" ".repeat(stack[stack.length - 1]) + "}");
+            }
+
+            return res.join('\n');
+        }
+
+        window.onclick = function (event) {
+            if (!event.target.closest('.custom-dropdown')) {
+                document.querySelectorAll('.dropdown-options').forEach(d => d.classList.remove('show'));
+            }
+        }
+
+    </script>
+
+    <style>
+        .ace_step_highlight {
+            background: rgba(236, 72, 153, 0.2);
+            border-left: 3px solid #ec4899;
+        }
+    </style>
+</body>
+
+</html>
